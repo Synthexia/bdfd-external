@@ -1,0 +1,26 @@
+{
+  "name": "bdfd-external",
+  "version": "1.0.0",
+  "description": "A package to work with BDFD externally",
+  "main": "dist/index.js",
+  "types": "types/types.d.ts",
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "keywords": [
+    "bdfd",
+    "external",
+    "bdfd-external",
+    "bdfdexternal"
+  ],
+  "author": "NightNutSky",
+  "license": "MIT",
+  "dependencies": {
+    "centra": "2.6.0",
+    "jsdom": "21.1.1"
+  },
+  "devDependencies": {
+    "@types/jsdom": "21.1.1",
+    "@types/centra": "2.2.0"
+  }
+}
