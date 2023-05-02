@@ -1,14 +1,14 @@
-type ParseTarget = 'commands' | 'variables';
-
 type RequestType = 'getBots' | 'getCommandsAndVariables' | 'getCommand' | 'getVariable' | 'updateCommand' | 'updateVariable' | 'createCommand' | 'createVariable' | 'deleteCommand' | 'deleteVariable';
 
 type RequestFunction = Promise<RequestResponse>;
 
-type FetchCommands = Promise<RequestError | CommandsResponse[]>;
-type FetchCommand = Promise<RequestError | CommandResponse>;
-type FetchVariables = Promise<RequestError | VariablesResponse[]>;
-type FetchVariable = Promise<RequestError | VariableResponse>;
-type FetchBots = Promise<RequestError | BotsResponse[]>;
+type CommandList = Promise<RequestError | CommandsResponse[]>;
+type VariableList = Promise<RequestError | VariablesResponse[]>;
+type BotList = Promise<RequestError | BotsResponse[]>;
+
+type GetCommand = Promise<RequestError | CommandResponse>;
+type GetVariable = Promise<RequestError | VariableResponse>;
+
 type UpdateCommand = Promise<RequestError | CommandResponse>;
 type UpdateVariable = Promise<RequestError | VariableResponse>;
 
@@ -154,7 +154,7 @@ export declare class Bot {
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a bot's info
      */
-    static list(baseData: BaseData): FetchBots;
+    static list(baseData: BaseData): BotList;
 }
 
 export declare class Command {
@@ -164,13 +164,13 @@ export declare class Command {
      * @param commandID A BDFD Command ID
      * @returns An object containing command's data
      */
-    static get(baseData: BaseData, commandID: string): FetchCommand;
+    static get(baseData: BaseData, commandID: string): GetCommand;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a command's info
      */
-    static list(baseData: BaseData): FetchCommands;
+    static list(baseData: BaseData): CommandList;
     /**
      * 
      * @param baseData An object containing data for authorization
@@ -187,13 +187,13 @@ export declare class Variable {
      * @param variableID A BDFD Variable ID
      * @returns An object containing variable's data
      */
-    static get(baseData: BaseData, variableID: string): FetchVariable;
+    static get(baseData: BaseData, variableID: string): GetVariable;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a variable's info
      */
-    static list(baseData: BaseData): FetchVariables;
+    static list(baseData: BaseData): VariableList;
     /**
      * 
      * @param baseData An object containing data for authorization

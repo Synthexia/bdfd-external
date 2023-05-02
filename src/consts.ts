@@ -1,30 +1,25 @@
-import { RequestErrorConstant } from "../types/types";
+import type { RequestErrorConstant } from "../types/types";
 
 const APP = 'https://botdesignerdiscord.com/app';
 
-
 export const
-    HOME = APP + '/home',
-    BOT = {
+    HOME_PATH = APP + '/home',
+    BOT_PATH = {
         Static: `${APP}/bot/`,
         Dynamic: (botID: string) => {
             return `${APP}/bot/${botID};`
         }
     },
-    COMMAND = (botID: string, commandID: string) => {
-        return `${BOT.Static + botID}/command/${commandID}`;
+    COMMAND_PATH = (botID: string, commandID: string) => {
+        return `${BOT_PATH.Static + botID}/command/${commandID}`;
     },
-    VARIABLE = (botID: string, variableID: string) => {
-        return `${BOT.Static + botID}/variable/${variableID}`;
+    VARIABLE_PATH = (botID: string, variableID: string) => {
+        return `${BOT_PATH.Static + botID}/variable/${variableID}`;
     }
 ;
 
-export const TARGET = Object.freeze({
-    Commands: 'commands',
-    Variables: 'variables'
-});
-
-export const TYPE = Object.freeze({
+// TODO edit it
+export const REQUEST_TYPE = Object.freeze({
     GetBots: 'getBots',
     GetCommandsAndVariables: 'getCommandsAndVariables',
     GetCommand: 'getCommand',
@@ -50,7 +45,7 @@ export const CASE = Object.freeze({
     }
 });
 
-export const STATUS = Object.freeze({
+export const REQUEST_STATUS = Object.freeze({
     Success: 200,
     Found: 302,
     BadRequest: 400,

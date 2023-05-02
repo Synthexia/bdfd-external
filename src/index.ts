@@ -1,80 +1,73 @@
 import * as centra from "centra";
 import { JSDOM } from "jsdom";
 import {
-    BOT,
+    BOT_PATH,
     CASE,
-    COMMAND,
+    COMMAND_PATH,
     ERROR,
-    HOME,
-    STATUS,
-    TARGET,
-    TYPE,
-    VARIABLE
+    HOME_PATH,
+    REQUEST_STATUS,
+    REQUEST_TYPE,
+    VARIABLE_PATH
 } from "./consts";
 import type {
     RequestType,
     RequestData,
     RequestError,
     BaseData,
-    FetchVariable,
-    FetchCommand,
     VariableResponse,
     VariablesResponse,
     CommandsResponse,
     CommandResponse,
-    FetchVariables,
-    FetchCommands,
-    FetchBots,
     RequestFunction,
     CommandData,
     UpdateCommand,
     VariableData,
-    UpdateVariable
+    UpdateVariable,
+    CommandList,
+    VariableList,
+    GetCommand,
+    GetVariable,
+    BotList
 } from "../types/types";
 
 async function request(requestType: RequestType, requestData: RequestData): RequestFunction {
+    const authToken = `default-sessionStore=${requestData.authToken}`;
+
     let
-        centraResponse: centra.Response,
-        response = '',
-        status = 0
+        centraResponse!: centra.Response,
+        response: string,
+        status: number
     ;
 
     switch (requestType) {
-        case TYPE.GetBots:
-            centraResponse = await centra(HOME)
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.GetBots:
+            centraResponse = await centra(HOME_PATH)
+                .header('cookie', authToken)
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
-        case TYPE.GetCommandsAndVariables:
-            centraResponse = await centra(BOT.Dynamic(requestData.botID!))
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.GetCommandsAndVariables:
+            centraResponse = await centra(BOT_PATH.Dynamic(requestData.botID!))
+                .header('cookie', authToken)
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
-        case TYPE.GetCommand:
-            centraResponse = await centra(COMMAND(requestData.botID!, requestData.commandData!.commandID))
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.GetCommand:
+            centraResponse = await centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID))
+                .header('cookie', authToken)
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
-        case TYPE.GetVariable:
-            centraResponse = await centra(VARIABLE(requestData.botID!, requestData.variableData!.variableID))
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.GetVariable:
+            centraResponse = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID))
+                .header('cookie', authToken)
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
-        case TYPE.UpdateCommand:
-            centraResponse = await centra(COMMAND(requestData.botID!, requestData.commandData!.commandID), 'POST')
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.UpdateCommand:
+            centraResponse = await centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID), 'POST')
+                .header('cookie', authToken)
                 .body({
                     name: requestData.commandData!.commandName!,
                     command: requestData.commandData!.commandTrigger!,
@@ -83,33 +76,32 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
                 }, 'form')
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
-        case TYPE.UpdateVariable:
-            centraResponse = await centra(VARIABLE(requestData.botID!, requestData.variableData!.variableID), 'POST')
-                .header('cookie', `default-sessionStore=${requestData.authToken}`)
+        case REQUEST_TYPE.UpdateVariable:
+            centraResponse = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'POST')
+                .header('cookie', authToken)
                 .body({
                     name: requestData.variableData!.variableName!,
                     value: requestData.variableData!.variableValue!
                 }, 'form')
                 .send()
             ;
-            response = await centraResponse.text();
-            status = centraResponse.statusCode!;
             break;
         // TODO
         /*
-        case TYPE.CreateCommand:
+        case REQUEST_TYPE.CreateCommand:
             break;
-        case TYPE.CreateVariable:
+        case REQUEST_TYPE.CreateVariable:
             break;
-        case TYPE.DeleteCommand:
+        case REQUEST_TYPE.DeleteCommand:
             break;
-        case TYPE.DeleteVariable:
+        case REQUEST_TYPE.DeleteVariable:
             break;
         */
     }
+
+    response = await centraResponse.text();
+    status = centraResponse.statusCode!;
 
     return {
         error: checkForError(status),
@@ -121,16 +113,16 @@ function checkForError(statusCode: number) {
     let error: boolean | RequestError = ERROR.Unknown(statusCode);
 
     switch (statusCode) {
-        case STATUS.Success:
+        case REQUEST_STATUS.Success:
             error = false;
             break;
-        case STATUS.Found:
+        case REQUEST_STATUS.Found:
             error = ERROR.AuthToken(statusCode);
             break;
-        case STATUS.BadRequest:
+        case REQUEST_STATUS.BadRequest:
             error = ERROR.Missing(statusCode);
             break;
-        case STATUS.NotFound:
+        case REQUEST_STATUS.NotFound:
             error = ERROR.General(statusCode);
             break;
     }
@@ -145,7 +137,7 @@ function languageSwitcher(name: string) {
         case 'BDScript':
             id = '0';
             break;
-        case 'JavaScript (ES5+BD.js)':
+        case 'Javascript (ES5+BD.js)':
             id = '1';
             break;
         case 'BDScript Unstable':
@@ -165,8 +157,8 @@ export class Bot {
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a bot's info
      */
-    static async list(baseData: BaseData): FetchBots {
-        const document = await request(TYPE.GetBots, {
+    static async list(baseData: BaseData): BotList {
+        const document = await request(REQUEST_TYPE.GetBots, {
             authToken: baseData.authToken
         });
     
@@ -225,8 +217,8 @@ export class Command {
      * @param commandID A BDFD Command ID
      * @returns An object containing command's data
      */
-    static async get(baseData: BaseData, commandID: string): FetchCommand {
-        const document = await request(TYPE.GetCommand, {
+    static async get(baseData: BaseData, commandID: string): GetCommand {
+        const document = await request(REQUEST_TYPE.GetCommand, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: {
@@ -284,8 +276,8 @@ export class Command {
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a command's info
      */
-    static async list(baseData: BaseData): FetchCommands {
-        const document = await request(TYPE.GetCommandsAndVariables, {
+    static async list(baseData: BaseData): CommandList {
+        const document = await request(REQUEST_TYPE.GetCommandsAndVariables, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
@@ -341,14 +333,13 @@ export class Command {
         const commandID = commandData?.commandID ? commandData.commandID : '';
 
         const previous = await this.get({
-            authToken:
-            baseData.authToken,
+            authToken: baseData.authToken,
             botID: baseData.botID
         }, commandID);
 
         if (( <RequestError> previous ).status) return previous;
     
-        const req = await request(TYPE.UpdateCommand, {
+        const req = await request(REQUEST_TYPE.UpdateCommand, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: {
@@ -375,8 +366,8 @@ export class Variable {
      * @param variableID A BDFD Variable ID
      * @returns An object containing variable's data
      */
-    static async get(baseData: BaseData, variableID: string): FetchVariable {
-        const document = await request(TYPE.GetVariable, {
+    static async get(baseData: BaseData, variableID: string): GetVariable {
+        const document = await request(REQUEST_TYPE.GetVariable, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: {
@@ -415,8 +406,8 @@ export class Variable {
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a variable's info
      */
-    static async list(baseData: BaseData): FetchVariables {
-        const document = await request(TYPE.GetCommandsAndVariables, {
+    static async list(baseData: BaseData): VariableList {
+        const document = await request(REQUEST_TYPE.GetCommandsAndVariables, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
@@ -479,7 +470,7 @@ export class Variable {
 
         if (( <RequestError> previous ).status) return previous;
     
-        const req = await request(TYPE.UpdateVariable, {
+        const req = await request(REQUEST_TYPE.UpdateVariable, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: {
