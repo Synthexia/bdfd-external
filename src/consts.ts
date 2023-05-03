@@ -1,77 +1,94 @@
-import type { RequestErrorConstant } from "../types/types";
+import type {
+    BotPathConstant,
+    CaseConstant,
+    CommandPathConstant,
+    RequestErrorConstant,
+    RequestStatusConstant,
+    RequestTypeConstant,
+    VariablePathConstant
+} from "../types/consts";
 
 const APP = 'https://botdesignerdiscord.com/app';
 
 export const
     HOME_PATH = APP + '/home',
-    BOT_PATH = {
-        Static: `${APP}/bot/`,
-        Dynamic: (botID: string) => {
+    BOT_PATH: BotPathConstant = {
+        STATIC: `${APP}/bot/`,
+        DYNAMIC: (botID: string) => {
             return `${APP}/bot/${botID};`
         }
     },
-    COMMAND_PATH = (botID: string, commandID: string) => {
-        return `${BOT_PATH.Static + botID}/command/${commandID}`;
+    COMMAND_PATH: CommandPathConstant = (botID: string, commandID: string) => {
+        return `${BOT_PATH.STATIC + botID}/command/${commandID}`;
     },
-    VARIABLE_PATH = (botID: string, variableID: string) => {
-        return `${BOT_PATH.Static + botID}/variable/${variableID}`;
+    VARIABLE_PATH: VariablePathConstant = (botID: string, variableID: string) => {
+        return `${BOT_PATH.STATIC + botID}/variable/${variableID}`;
     }
 ;
 
-// TODO edit it
-export const REQUEST_TYPE = Object.freeze({
-    GetBots: 'getBots',
-    GetCommandsAndVariables: 'getCommandsAndVariables',
-    GetCommand: 'getCommand',
-    GetVariable: 'getVariable',
-    UpdateCommand: 'updateCommand',
-    UpdateVariable: 'updateVariable',
-    CreateCommand: 'createCommand',
-    CreateVariable: 'createVariable',
-    DeleteCommand: 'deleteCommand',
-    DeleteVariable: 'deleteVariable'
-});
-
-export const CASE = Object.freeze({
-    Command: {
-        Name: 0,
-        Trigger: 1,
-        Code: 2,
-        Language: 3
+export const REQUEST_TYPE = Object.freeze( <RequestTypeConstant> {
+    CREATE: {
+        COMMAND: 'CREATE_COMMAND',
+        VARIABLE: 'CREATE_VARIABLE'
     },
-    Variable: {
-        Name: 0,
-        Value: 1
+    DELETE: {
+        COMMAND: 'DELETE_COMMAND',
+        VARIABLE: 'DELETE_VARIABLE'
+    },
+    GET: {
+        COMMAND: 'GET_COMMAND',
+        VARIABLE: 'GET_VARIABLE'
+    },
+    LIST: {
+        BOT: 'BOT_LIST',
+        COMMAND_VARIABLE: 'COMMAND_VARIABLE_LIST'
+    },
+    UPDATE: {
+        COMMAND: 'UPDATE_COMMAND',
+        VARIABLE: 'UPDATE_VARIABLE'
     }
 });
 
-export const REQUEST_STATUS = Object.freeze({
-    Success: 200,
-    Found: 302,
-    BadRequest: 400,
-    NotFound: 404
+export const CASE = Object.freeze( <CaseConstant> {
+    COMMAND: {
+        NAME: 0,
+        TRIGGER: 1,
+        CODE: 2,
+        LANGUAGE: 3
+    },
+    VARIABLE: {
+        NAME: 0,
+        VALUE: 1
+    }
+});
+
+export const REQUEST_STATUS = Object.freeze( <RequestStatusConstant> {
+    SUCCESS: 200,
+    FOUND: 302,
+    BAD_REQUEST: 400,
+    NOT_FOUND: 404
 });
 
 export const ERROR = Object.freeze( <RequestErrorConstant> {
-    AuthToken(statusCode: number) {
+    AUTH_TOKEN(statusCode: number) {
         return {
             status: statusCode,
             message: '[AuthToken] Invalid or Expired auth token was passed.'
         };
     },
-    General(statusCode: number) {
+    GENERAL(statusCode: number) {
         return {
             status: statusCode,
             message: '[General] Invalid or Non-existent Bot ID / Command ID / Variable ID was passed.'
         }
     },
-    Missing(statusCode: number) {
+    MISSING(statusCode: number) {
         return {
             status: statusCode,
             message: '[Missing] Command ID / Variable ID is missing.'
         }
     },
-    Unknown(statusCode: number) {
+    UNKNOWN(statusCode: number) {
             return {
                 status: statusCode,
                 message: '[Unknown] Unknown Error.'

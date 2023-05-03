@@ -1,4 +1,15 @@
-type RequestType = 'getBots' | 'getCommandsAndVariables' | 'getCommand' | 'getVariable' | 'updateCommand' | 'updateVariable' | 'createCommand' | 'createVariable' | 'deleteCommand' | 'deleteVariable';
+type RequestType =
+    'CREATE_COMMAND' |
+    'CREATE_VARIABLE' |
+    'DELETE_COMMAND' |
+    'DELETE_VARIABLE' |
+    'GET_COMMAND' |
+    'GET_VARIABLE' |
+    'BOT_LIST' |
+    'COMMAND_VARIABLE_LIST' |
+    'UPDATE_COMMAND' |
+    'UPDATE_VARIABLE'
+;
 
 type RequestFunction = Promise<RequestResponse>;
 
@@ -15,13 +26,6 @@ type UpdateVariable = Promise<RequestError | VariableResponse>;
 interface RequestResponse {
     error: boolean | RequestError;
     response: Document;
-}
-
-interface RequestErrorConstant {
-    AuthToken(statusCode: number): RequestError;
-    General(statusCode: number): RequestError;
-    Missing(statusCode: number): RequestError;
-    Unknown(statusCode: number): RequestError;
 }
 
 interface RequestError {

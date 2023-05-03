@@ -35,70 +35,53 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
     const authToken = `default-sessionStore=${requestData.authToken}`;
 
     let
-        centraResponse!: centra.Response,
+        centraRequest!: centra.Request,
+        centraResponse: centra.Response,
         response: string,
         status: number
     ;
 
     switch (requestType) {
-        case REQUEST_TYPE.GetBots:
-            centraResponse = await centra(HOME_PATH)
-                .header('cookie', authToken)
-                .send()
-            ;
+        case REQUEST_TYPE.LIST.BOT:
+            centraRequest = centra(HOME_PATH);
             break;
-        case REQUEST_TYPE.GetCommandsAndVariables:
-            centraResponse = await centra(BOT_PATH.Dynamic(requestData.botID!))
-                .header('cookie', authToken)
-                .send()
-            ;
+        case REQUEST_TYPE.LIST.COMMAND_VARIABLE:
+            centraRequest = centra(BOT_PATH.DYNAMIC(requestData.botID!));
             break;
-        case REQUEST_TYPE.GetCommand:
-            centraResponse = await centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID))
-                .header('cookie', authToken)
-                .send()
-            ;
+        case REQUEST_TYPE.GET.COMMAND:
+            centraRequest = centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID));
             break;
-        case REQUEST_TYPE.GetVariable:
-            centraResponse = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID))
-                .header('cookie', authToken)
-                .send()
-            ;
+        case REQUEST_TYPE.GET.VARIABLE:
+            centraRequest = centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID));
             break;
-        case REQUEST_TYPE.UpdateCommand:
-            centraResponse = await centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID), 'POST')
-                .header('cookie', authToken)
-                .body({
-                    name: requestData.commandData!.commandName!,
-                    command: requestData.commandData!.commandTrigger!,
-                    replyMessage: requestData.commandData!.commandCode!,
-                    language: requestData.commandData!.commandLanguage!.id!
-                }, 'form')
-                .send()
-            ;
+        case REQUEST_TYPE.UPDATE.COMMAND:
+            centraRequest = centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID), 'POST').body({
+                name: requestData.commandData!.commandName!,
+                command: requestData.commandData!.commandTrigger!,
+                replyMessage: requestData.commandData!.commandCode!,
+                language: requestData.commandData!.commandLanguage!.id!
+            }, 'form');
             break;
-        case REQUEST_TYPE.UpdateVariable:
-            centraResponse = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'POST')
-                .header('cookie', authToken)
-                .body({
-                    name: requestData.variableData!.variableName!,
-                    value: requestData.variableData!.variableValue!
-                }, 'form')
-                .send()
-            ;
+        case REQUEST_TYPE.UPDATE.VARIABLE:
+            centraRequest = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'POST').body({
+                name: requestData.variableData!.variableName!,
+                value: requestData.variableData!.variableValue!
+            }, 'form');
             break;
         // TODO
         /*
-        case REQUEST_TYPE.CreateCommand:
+        case REQUEST_TYPE.CREATE.COMMAND:
             break;
-        case REQUEST_TYPE.CreateVariable:
+        case REQUEST_TYPE.CREATE.VARIABLE:
             break;
-        case REQUEST_TYPE.DeleteCommand:
+        case REQUEST_TYPE.DELETE.COMMAND:
             break;
-        case REQUEST_TYPE.DeleteVariable:
+        case REQUEST_TYPE.DELETE.VARIABLE:
             break;
         */
     }
+
+    centraResponse = await centraRequest.header('cookie', authToken).send();
 
     response = await centraResponse.text();
     status = centraResponse.statusCode!;
@@ -110,20 +93,20 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
 }
 
 function checkForError(statusCode: number) {
-    let error: boolean | RequestError = ERROR.Unknown(statusCode);
+    let error: boolean | RequestError = ERROR.UNKNOWN(statusCode);
 
     switch (statusCode) {
-        case REQUEST_STATUS.Success:
+        case REQUEST_STATUS.SUCCESS:
             error = false;
             break;
-        case REQUEST_STATUS.Found:
-            error = ERROR.AuthToken(statusCode);
+        case REQUEST_STATUS.FOUND:
+            error = ERROR.AUTH_TOKEN(statusCode);
             break;
-        case REQUEST_STATUS.BadRequest:
-            error = ERROR.Missing(statusCode);
+        case REQUEST_STATUS.BAD_REQUEST:
+            error = ERROR.MISSING(statusCode);
             break;
-        case REQUEST_STATUS.NotFound:
-            error = ERROR.General(statusCode);
+        case REQUEST_STATUS.NOT_FOUND:
+            error = ERROR.GENERAL(statusCode);
             break;
     }
     
@@ -158,7 +141,7 @@ export class Bot {
      * @returns An array containing objects with a bot's info
      */
     static async list(baseData: BaseData): BotList {
-        const document = await request(REQUEST_TYPE.GetBots, {
+        const document = await request(REQUEST_TYPE.LIST.BOT, {
             authToken: baseData.authToken
         });
     
@@ -218,7 +201,7 @@ export class Command {
      * @returns An object containing command's data
      */
     static async get(baseData: BaseData, commandID: string): GetCommand {
-        const document = await request(REQUEST_TYPE.GetCommand, {
+        const document = await request(REQUEST_TYPE.GET.COMMAND, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: {
@@ -240,16 +223,16 @@ export class Command {
     
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
-                case CASE.Command.Name:
+                case CASE.COMMAND.NAME:
                     commandName = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.Command.Trigger:
+                case CASE.COMMAND.TRIGGER:
                     commandTrigger = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.Command.Code:
+                case CASE.COMMAND.CODE:
                     commandCode = (divs[i].getElementsByClassName('uk-textarea')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.Command.Language:
+                case CASE.COMMAND.LANGUAGE:
                     const selector = divs[i].getElementsByClassName('uk-select')[0] as HTMLSelectElement;
     
                     for (const option of selector) {
@@ -277,7 +260,7 @@ export class Command {
      * @returns An array containing objects with a command's info
      */
     static async list(baseData: BaseData): CommandList {
-        const document = await request(REQUEST_TYPE.GetCommandsAndVariables, {
+        const document = await request(REQUEST_TYPE.LIST.COMMAND_VARIABLE, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
@@ -339,7 +322,7 @@ export class Command {
 
         if (( <RequestError> previous ).status) return previous;
     
-        const req = await request(REQUEST_TYPE.UpdateCommand, {
+        const req = await request(REQUEST_TYPE.UPDATE.COMMAND, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: {
@@ -367,7 +350,7 @@ export class Variable {
      * @returns An object containing variable's data
      */
     static async get(baseData: BaseData, variableID: string): GetVariable {
-        const document = await request(REQUEST_TYPE.GetVariable, {
+        const document = await request(REQUEST_TYPE.GET.VARIABLE, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: {
@@ -386,10 +369,10 @@ export class Variable {
     
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
-                case CASE.Variable.Name:
+                case CASE.VARIABLE.NAME:
                     variableName = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.Variable.Value:
+                case CASE.VARIABLE.VALUE:
                     variableValue = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
             }
@@ -407,7 +390,7 @@ export class Variable {
      * @returns An array containing objects with a variable's info
      */
     static async list(baseData: BaseData): VariableList {
-        const document = await request(REQUEST_TYPE.GetCommandsAndVariables, {
+        const document = await request(REQUEST_TYPE.LIST.COMMAND_VARIABLE, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
@@ -470,7 +453,7 @@ export class Variable {
 
         if (( <RequestError> previous ).status) return previous;
     
-        const req = await request(REQUEST_TYPE.UpdateVariable, {
+        const req = await request(REQUEST_TYPE.UPDATE.VARIABLE, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: {
