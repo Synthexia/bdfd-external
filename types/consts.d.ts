@@ -13,6 +13,7 @@ type VariablePathConstant = (botID: string, variableID: string) => string;
 interface RequestErrorConstant {
     AUTH_TOKEN(statusCode: number): RequestError;
     GENERAL(statusCode: number): RequestError;
+    LIMIT(statusCode: number): RequestError;
     MISSING(statusCode: number): RequestError;
     UNKNOWN(statusCode: number): RequestError;
 }
@@ -70,6 +71,8 @@ interface CCVariable {
 interface RequestStatusConstant {
     SUCCESS: 200,
     FOUND: 302,
+    SEE_OTHER: 303,
     BAD_REQUEST: 400,
+    FORBIDDEN: 403,
     NOT_FOUND: 404
 }

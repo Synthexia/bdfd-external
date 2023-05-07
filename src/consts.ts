@@ -23,6 +23,12 @@ export const
     },
     VARIABLE_PATH: VariablePathConstant = (botID: string, variableID: string) => {
         return `${BOT_PATH.STATIC + botID}/variable/${variableID}`;
+    },
+    NEW_COMMAND_PATH = (botID: string) => {
+        return `${BOT_PATH.STATIC + botID}/new_command`;
+    },
+    NEW_VARIABLE_PATH = (botID: string) => {
+        return `${BOT_PATH.STATIC + botID}/new_variable`;
     }
 ;
 
@@ -65,7 +71,9 @@ export const CASE = Object.freeze( <CaseConstant> {
 export const REQUEST_STATUS = Object.freeze( <RequestStatusConstant> {
     SUCCESS: 200,
     FOUND: 302,
+    SEE_OTHER: 303,
     BAD_REQUEST: 400,
+    FORBIDDEN: 403,
     NOT_FOUND: 404
 });
 
@@ -80,6 +88,12 @@ export const ERROR = Object.freeze( <RequestErrorConstant> {
         return {
             status: statusCode,
             message: '[General] Invalid or Non-existent Bot ID / Command ID / Variable ID was passed.'
+        }
+    },
+    LIMIT(statusCode: number) {
+        return {
+            status: statusCode,
+            message: '[Limit] Reached command / variable count limit.'
         }
     },
     MISSING(statusCode: number) {

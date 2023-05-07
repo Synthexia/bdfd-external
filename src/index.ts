@@ -6,6 +6,8 @@ import {
     COMMAND_PATH,
     ERROR,
     HOME_PATH,
+    NEW_COMMAND_PATH,
+    NEW_VARIABLE_PATH,
     REQUEST_STATUS,
     REQUEST_TYPE,
     VARIABLE_PATH
@@ -34,12 +36,7 @@ import type {
 async function request(requestType: RequestType, requestData: RequestData): RequestFunction {
     const authToken = `default-sessionStore=${requestData.authToken}`;
 
-    let
-        centraRequest!: centra.Request,
-        centraResponse: centra.Response,
-        response: string,
-        status: number
-    ;
+    let centraRequest!: centra.Request;
 
     switch (requestType) {
         case REQUEST_TYPE.LIST.BOT:
@@ -63,17 +60,19 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
             }, 'form');
             break;
         case REQUEST_TYPE.UPDATE.VARIABLE:
-            centraRequest = await centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'POST').body({
+            centraRequest = centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'POST').body({
                 name: requestData.variableData!.variableName!,
                 value: requestData.variableData!.variableValue!
             }, 'form');
             break;
-        // TODO
-        /*
         case REQUEST_TYPE.CREATE.COMMAND:
+            centraRequest = centra(NEW_COMMAND_PATH(requestData.botID!));
             break;
         case REQUEST_TYPE.CREATE.VARIABLE:
+            centraRequest = centra(NEW_VARIABLE_PATH(requestData.botID!));
             break;
+        // TODO
+        /*
         case REQUEST_TYPE.DELETE.COMMAND:
             break;
         case REQUEST_TYPE.DELETE.VARIABLE:
@@ -81,10 +80,11 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
         */
     }
 
-    centraResponse = await centraRequest.header('cookie', authToken).send();
-
-    response = await centraResponse.text();
-    status = centraResponse.statusCode!;
+    const 
+        centraResponse = await centraRequest.header('cookie', authToken).send(),
+        response = await centraResponse.text(),
+        status = centraResponse.statusCode!
+    ;
 
     return {
         error: checkForError(status),
@@ -102,8 +102,14 @@ function checkForError(statusCode: number) {
         case REQUEST_STATUS.FOUND:
             error = ERROR.AUTH_TOKEN(statusCode);
             break;
+        case REQUEST_STATUS.SEE_OTHER:
+            error = false;
+            break;
         case REQUEST_STATUS.BAD_REQUEST:
             error = ERROR.MISSING(statusCode);
+            break;
+        case REQUEST_STATUS.FORBIDDEN:
+            error = ERROR.LIMIT(statusCode);
             break;
         case REQUEST_STATUS.NOT_FOUND:
             error = ERROR.GENERAL(statusCode);
@@ -194,6 +200,43 @@ export class Bot {
 }
 
 export class Command {
+    static async create(baseData: BaseData, commandData: Omit<CommandData, 'commandID'>) {
+        const document = await request(REQUEST_TYPE.CREATE.COMMAND, {
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        });
+
+        if (document.error) return <RequestError> document.error;
+
+        const languageNameRegExp = new RegExp(/^(?:BDScript ?(?:2|Unstable)?|Javascript \(ES5\+BD\.js\))$/gm);
+        const
+            commandID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!,
+            commandName = commandData.commandName ?? 'Unnamed command',
+            commandTrigger = commandData.commandTrigger ?? '',
+            commandCode = commandData.commandCode ?? '',
+            commandLanguage =
+                commandData.commandLanguage ?
+                commandData.commandLanguage.id ? { id: commandData.commandLanguage.id } :
+                commandData.commandLanguage.name ?
+                languageNameRegExp.test(commandData.commandLanguage.name) ? { name: commandData.commandLanguage.name } :
+                { id: '3' } : { id: '3' } : { id: '3' }
+        ;
+        const handledCommandData: CommandData = {
+            commandID: commandID,
+            commandName: commandName,
+            commandTrigger: commandTrigger,
+            commandCode: commandCode,
+            commandLanguage: commandLanguage
+        };
+
+        await this.update({
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        }, handledCommandData);
+
+        return handledCommandData;
+    }
+
     /**
      * 
      * @param baseData An object containing data for authorization
@@ -343,6 +386,33 @@ export class Command {
 }
 
 export class Variable {
+    static async create(baseData: BaseData, variableData: Omit<VariableData, 'variableID'>) {
+        const document = await request(REQUEST_TYPE.CREATE.VARIABLE, {
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        });
+
+        if (document.error) return <RequestError> document.error;
+
+        const
+            variableID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!,
+            variableName = variableData.variableName ?? 'Unnamed variable',
+            variableValue = variableData.variableValue ?? ''
+        ;
+        const handledVariableData: VariableData = {
+            variableID: variableID,
+            variableName: variableName,
+            variableValue: variableValue
+        };
+
+        await this.update({
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        }, handledVariableData);
+
+        return handledVariableData;
+    }
+
     /**
      * 
      * @param baseData An object containing data for authorization
