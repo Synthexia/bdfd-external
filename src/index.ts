@@ -30,7 +30,11 @@ import type {
     VariableList,
     GetCommand,
     GetVariable,
-    BotList
+    BotList,
+    CreateCommand,
+    DeleteCommand,
+    CreateVariable,
+    DeleteVariable
 } from "../types/types";
 
 async function request(requestType: RequestType, requestData: RequestData): RequestFunction {
@@ -71,13 +75,12 @@ async function request(requestType: RequestType, requestData: RequestData): Requ
         case REQUEST_TYPE.CREATE.VARIABLE:
             centraRequest = centra(NEW_VARIABLE_PATH(requestData.botID!));
             break;
-        // TODO
-        /*
         case REQUEST_TYPE.DELETE.COMMAND:
+            centraRequest = centra(COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID), 'DELETE');
             break;
         case REQUEST_TYPE.DELETE.VARIABLE:
+            centraRequest = centra(VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID), 'DELETE');
             break;
-        */
     }
 
     const 
@@ -200,7 +203,13 @@ export class Bot {
 }
 
 export class Command {
-    static async create(baseData: BaseData, commandData: Omit<CommandData, 'commandID'>) {
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param commandData An object containing new command's data (with the exception of the `commandID` property)
+     * @returns An object containing created command's data
+     */
+    static async create(baseData: BaseData, commandData: Omit<CommandData, 'commandID'>): CreateCommand {
         const document = await request(REQUEST_TYPE.CREATE.COMMAND, {
             authToken: baseData.authToken,
             botID: baseData.botID
@@ -235,6 +244,33 @@ export class Command {
         }, handledCommandData);
 
         return handledCommandData;
+    }
+
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param commandID A BDFD Command ID
+     * @returns An object containing deleted command's data
+     */
+    static async delete(baseData: BaseData, commandID: string): DeleteCommand {
+        const deleted = await this.get({
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        }, commandID);
+
+        if (( <RequestError> deleted ).status) return deleted;
+    
+        const req = await request(REQUEST_TYPE.DELETE.COMMAND, {
+            authToken: baseData.authToken,
+            botID: baseData.botID,
+            commandData: {
+                commandID: commandID
+            }
+        });
+    
+        if (req.error) return <RequestError> req.error;
+    
+        return deleted;
     }
 
     /**
@@ -386,7 +422,13 @@ export class Command {
 }
 
 export class Variable {
-    static async create(baseData: BaseData, variableData: Omit<VariableData, 'variableID'>) {
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
+     * @returns An object containing created variable's data
+     */
+    static async create(baseData: BaseData, variableData: Omit<VariableData, 'variableID'>): CreateVariable {
         const document = await request(REQUEST_TYPE.CREATE.VARIABLE, {
             authToken: baseData.authToken,
             botID: baseData.botID
@@ -411,6 +453,33 @@ export class Variable {
         }, handledVariableData);
 
         return handledVariableData;
+    }
+
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param variableID A BDFD Variable ID
+     * @returns An object containing deleted variable's data
+     */
+    static async delete(baseData: BaseData, variableID: string): DeleteVariable {
+        const deleted = await this.get({
+            authToken: baseData.authToken,
+            botID: baseData.botID
+        }, variableID);
+
+        if (( <RequestError> deleted ).status) return deleted;
+    
+        const req = await request(REQUEST_TYPE.DELETE.VARIABLE, {
+            authToken: baseData.authToken,
+            botID: baseData.botID,
+            variableData: {
+                variableID: variableID
+            }
+        });
+    
+        if (req.error) return <RequestError> req.error;
+    
+        return deleted;
     }
 
     /**

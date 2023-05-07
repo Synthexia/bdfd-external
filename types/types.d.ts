@@ -23,6 +23,12 @@ type GetVariable = Promise<RequestError | VariableResponse>;
 type UpdateCommand = Promise<RequestError | CommandResponse>;
 type UpdateVariable = Promise<RequestError | VariableResponse>;
 
+type CreateCommand = Promise<RequestError | CommandData>;
+type CreateVariable = Promise<RequestError | VariableData>;
+
+type DeleteCommand = Promise<RequestError | CommandResponse>;
+type DeleteVariable = Promise<RequestError | VariableResponse>;
+
 interface RequestResponse {
     error: boolean | RequestError;
     response: Document;
@@ -165,6 +171,20 @@ export declare class Command {
     /**
      * 
      * @param baseData An object containing data for authorization
+     * @param commandData An object containing new command's data (with the exception of the `commandID` property)
+     * @returns An object containing created command's data
+     */
+    static create(baseData: BaseData, commandData: Omit<CommandData, 'commandID'>): CreateCommand;
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param commandID A BDFD Command ID
+     * @returns An object containing deleted command's data
+     */
+    static delete(baseData: BaseData, commandID: string): DeleteCommand;
+    /**
+     * 
+     * @param baseData An object containing data for authorization
      * @param commandID A BDFD Command ID
      * @returns An object containing command's data
      */
@@ -185,6 +205,20 @@ export declare class Command {
 }
 
 export declare class Variable {
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
+     * @returns An object containing created variable's data
+     */
+    static create(baseData: BaseData, variableData: Omit<VariableData, 'variableID'>): CreateVariable;
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @param variableID A BDFD Variable ID
+     * @returns An object containing deleted variable's data
+     */
+    static delete(baseData: BaseData, variableID: string): DeleteVariable;
     /**
      * 
      * @param baseData An object containing data for authorization
