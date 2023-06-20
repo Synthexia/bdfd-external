@@ -1,242 +1,203 @@
-type RequestType =
-    'CREATE_COMMAND' |
-    'CREATE_VARIABLE' |
-    'DELETE_COMMAND' |
-    'DELETE_VARIABLE' |
-    'GET_COMMAND' |
-    'GET_VARIABLE' |
-    'BOT_LIST' |
-    'COMMAND_VARIABLE_LIST' |
-    'UPDATE_COMMAND' |
-    'UPDATE_VARIABLE'
-;
+export namespace Request {
+    namespace Response {
+        interface Request {
+            error: boolean | Error;
+            response: Document;
+        }
 
-type RequestFunction = Promise<RequestResponse>;
+        interface Command extends Omit<Data.Command.Data, 'commandID'> { }
+        interface Commands extends Omit<Data.Command.Data, 'commandLanguage' | 'commandCode'> { }
+        interface Variable extends Omit<Data.Variable.Data, 'variableID'> { }
+        interface Variables extends Data.Variable.Data { }
+        interface Bots extends Data.Bot.Data { }
+    }
 
-type CommandList = Promise<RequestError | CommandsResponse[]>;
-type VariableList = Promise<RequestError | VariablesResponse[]>;
-type BotList = Promise<RequestError | BotsResponse[]>;
+    interface Error {
+        /**
+         * A HTTP Status code
+         */
+        status: number;
+        /**
+         * A description of what might be causing an error
+         */
+        message: string;
+    }
 
-type GetCommand = Promise<RequestError | CommandResponse>;
-type GetVariable = Promise<RequestError | VariableResponse>;
+    namespace Data {
+        interface Base {
+            /**
+             * An Auth token for authorization (aka Cookie which can be obtained from the web app)
+             */
+            authToken: string;
+            /**
+             * A BDFD Bot ID 
+             */
+            botID: string;
+        }
 
-type UpdateCommand = Promise<RequestError | CommandResponse>;
-type UpdateVariable = Promise<RequestError | VariableResponse>;
+        interface Request {
+            /**
+             * An Auth token for authorization (aka Cookie which can be obtained from the web app)
+             */
+            readonly authToken: string;
+            /**
+             * A BDFD Bot ID 
+             */
+            readonly botID?: string;
+            /**
+             * A Command Data
+             */
+            readonly commandData?: Partial<Command.Data>;
+            /**
+             * A Variable Data
+             */
+            readonly variableData?: Partial<Variable.Data>;
+        }
 
-type CreateCommand = Promise<RequestError | CommandData>;
-type CreateVariable = Promise<RequestError | VariableData>;
+        namespace Command {
+            interface Data {
+                /**
+                 * A BDFD Command ID
+                 */
+                commandID: string;
+                commandName: string;
+                commandTrigger: string;
+                commandLanguage: LanguageData;
+                commandCode: string;
+            }
 
-type DeleteCommand = Promise<RequestError | CommandResponse>;
-type DeleteVariable = Promise<RequestError | VariableResponse>;
+            interface LanguageData {
+                /**
+                 * A BDFD Language ID.
+                 * 
+                 * Can be used as a replacement for the `name` property but the `id` property has a higher priority
+                 */
+                id?: string;
+                /**
+                 * Can be used as a replacement for the `id` property but the `id` property has a higher priority
+                 */
+                name?: string;
+            }
+        }
 
-interface RequestResponse {
-    error: boolean | RequestError;
-    response: Document;
+        namespace Variable {
+            interface Data {
+                /**
+                 * A BDFD Variable ID
+                 */
+                variableID: string;
+                variableName: string;
+                variableValue: string;
+            }
+        }
+
+        namespace Bot {
+            interface Data {
+                /**
+                 * A BDFD Bot ID
+                 */
+                botID: string;
+                botName: string;
+                /**
+                 * The example outputs:
+                 * 
+                 * `Hosting already ended`
+                 * 
+                 * `2023-05-01T21:40:19Z`
+                 */
+                hostingTime: string;
+                /**
+                 * An example output: `4 commands`
+                 */
+                commandCount: string;
+                /**
+                 * An example output: `4 variables`
+                 */
+                variableCount: string;
+            }
+        }
+    }
 }
 
-interface RequestError {
-    /**
-     * A HTTP Status code
-     */
-    status: number;
-    /**
-     * A description of what might be causing an error
-     */
-    message: string;
-}
-
-interface RequestData  {
-    readonly authToken: string;
-    readonly botID?: string;
-    readonly commandData?: CommandData;
-    readonly variableData?: VariableData;
-}
-
-interface CommandData {
-    /**
-     * A BDFD Command ID
-     */
-    commandID: string;
-    commandName?: string;
-    commandTrigger?: string;
-    commandLanguage?: CommandLanguage;
-    commandCode?: string;
-}
-
-interface CommandLanguage {
-    /**
-     * A BDFD Language ID.
-     * 
-     * Can be used as a replacement for the `name` property but the `id` property has a higher priority
-     */
-    id?: string;
-    /**
-     * Can be used as a replacement for the `id` property but the `id` property has a higher priority
-     */
-    name?: string;
-}
-
-interface VariableData {
-    /**
-     * A BDFD Variable ID
-     */
-    variableID: string;
-    variableName?: string;
-    variableValue?: string;
-}
-
-
-interface BaseData {
-    /**
-     * An Auth token for authorization (aka Cookie which can be obtained from the web app)
-     */
-    authToken: string;
-    /**
-     * A BDFD Bot ID 
-     */
-    botID?: string;
-}
-
-export interface VariableResponse {
-    variableName: string;
-    variableValue: string;
-}
-
-export interface VariablesResponse {
-    /**
-     * A BDFD Variable ID
-     */
-    variableID: string;
-    variableName: string;
-    variableValue: string;
-}
-
-export interface CommandResponse {
-    commandName: string;
-    commandTrigger: string;
-    /**
-     * A Language name
-     */
-    commandLanguage: string;
-    /**
-     * A BDFD Language ID
-     */
-    commandLanguageID: string;
-    commandCode: string;
-}
-
-export interface CommandsResponse {
-    /**
-     * A BDFD Command ID
-     */
-    commandID: string;
-    commandName: string;
-    commandTrigger: string;
-}
-
-export interface BotsResponse {
-    /**
-     * A BDFD Bot ID
-     */
-    botID: string;
-    botName: string;
-    /**
-     * The example outputs:
-     * 
-     * `Hosting already ended`
-     * 
-     * `2023-05-01T21:40:19Z`
-     */
-    hostingTime: string;
-    /**
-     * An example output: `4 commands`
-     */
-    commandCount: string;
-    /**
-     * An example output: `4 variables`
-     */
-    variableCount: string;
-}
-
-export declare class Bot {
+export class Bot {
     /**
      * 
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a bot's info
      */
-    static list(baseData: BaseData): BotList;
+    static list(baseData: Omit<Request.Data.Base, 'botID'>): Promise<Request.Response.Bots[]>;
 }
 
-export declare class Command {
+export class Command {
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param commandData An object containing new command's data (with the exception of the `commandID` property)
      * @returns An object containing created command's data
      */
-    static create(baseData: BaseData, commandData: Omit<CommandData, 'commandID'>): CreateCommand;
+    static create(baseData: Request.Data.Base, commandData: Omit<Request.Data.Command.Data, 'commandID'>): Promise<Request.Data.Command.Data>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param commandID A BDFD Command ID
      * @returns An object containing deleted command's data
      */
-    static delete(baseData: BaseData, commandID: string): DeleteCommand;
+    static delete(baseData: Request.Data.Base, commandID: string): Promise<Request.Response.Command>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param commandID A BDFD Command ID
      * @returns An object containing command's data
      */
-    static get(baseData: BaseData, commandID: string): GetCommand;
+    static get(baseData: Request.Data.Base, commandID: string): Promise<Request.Response.Command>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a command's info
      */
-    static list(baseData: BaseData): CommandList;
+    static list(baseData: Request.Data.Base): Promise<Request.Response.Commands[]>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param commandData An object containing new command's data (with the exception of the `commandID` property)
      * @returns An object containing previous command's data
      */
-    static update(baseData: BaseData, commandData: CommandData): UpdateCommand;
+    static update(baseData: Request.Data.Base, commandData: Request.Data.Command.Data): Promise<Request.Response.Command>;
 }
 
-export declare class Variable {
+export class Variable {
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
      * @returns An object containing created variable's data
      */
-    static create(baseData: BaseData, variableData: Omit<VariableData, 'variableID'>): CreateVariable;
+    static create(baseData: Request.Data.Base, variableData: Omit<Request.Data.Variable.Data, 'variableID'>): Promise<Request.Data.Variable.Data>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param variableID A BDFD Variable ID
      * @returns An object containing deleted variable's data
      */
-    static delete(baseData: BaseData, variableID: string): DeleteVariable;
+    static delete(baseData: Request.Data.Base, variableID: string): Promise<Request.Response.Variable>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param variableID A BDFD Variable ID
      * @returns An object containing variable's data
      */
-    static get(baseData: BaseData, variableID: string): GetVariable;
+    static get(baseData: Request.Data.Base, variableID: string): Promise<Request.Response.Variable>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @returns An array containing objects with a variable's info
      */
-    static list(baseData: BaseData): VariableList;
+    static list(baseData: Request.Data.Base): Promise<Request.Response.Variables[]>;
     /**
      * 
      * @param baseData An object containing data for authorization
      * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
      * @returns An object containing previous variable's data
      */
-    static update(baseData: BaseData, variableData: VariableData): UpdateVariable;
+    static update(baseData: Request.Data.Base, variableData: Request.Data.Variable.Data): Promise<Request.Response.Variable>;
 }

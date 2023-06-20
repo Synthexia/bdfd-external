@@ -1,4 +1,4 @@
-# Let Me Note
+# Introduction Note
 
 The package was mainly created for better implementation of some features in my [VS Code extension](https://marketplace.visualstudio.com/items?itemName=NightNutSky.bdfd-bds) and for powering my future REST API which will let you access below listed features by making HTTP Requests.
 
@@ -12,79 +12,58 @@ Get your bot list and Get, Update, Create & Delete commands and variables extern
 ```sh
 npm i @nightnutsky/bdfd-external
 ```
+```sh
+pnpm add @nightnutsky/bdfd-external
+```
 
-## Code Examples
+## Brief Examples
 
-The following examples in TypeScript.\
-TypeScript is severely recommended to use for the best experience and practice.
+### Example #1
 
-### Get Bot List
 ```ts
 import { Bot } from "@nightnutsky/bdfd-external";
-import type {
-    BotsResponse,
-    RequestError
-} from "@nightnutsky/bdfd-external";
 
-Bot.list({
-    authToken: 'Your auth token goes here'
-}).then(value => {
-    const { status, message } = <RequestError> value;
-    const list = <BotsResponse[]> value;
+const authToken = ''; // Your auth token
 
-    if (status) return console.error(`An error occured with the ${status} status code: ${message}`);
+Bot.list({ authToken })
+.then((list) => {
+    const formattedList = list.map((bot) => {
+        const {
+            botID,
+            botName,
+            hostingTime
+        } = bot;
 
-    console.log('Your bot list:', list);
+        return `Bot ${botID}: ${botName}'s hosting time end date: ${hostingTime}`;
+    }).join('\n');
+
+    console.log(formattedList);
+})
+.catch((error) => {
+    console.error('An error occured while getting the bot list:', error);
 });
+
 ```
 
-#### Example Object Response
-```js
-[
-    {
-        botID: '1618460',
-        botName: 'Fluffy-nyah',
-        hostingTime: '2023-05-07T16:46:53Z',
-        commandCount: '61 commands',
-        variableCount: '34 variables'
-    },
-    {
-        botID: '2152301',
-        botName: 'Noriko',
-        hostingTime: 'Hosting already ended',
-        commandCount: '8 commands',
-        variableCount: '3 variables'
-    }
-]
-```
+### Example #2
 
-### Get Command
 ```ts
-import { Command } from "@nightnutsky/bdfd-external";
-import type {
-    CommandResponse, RequestError
-} from "@nightnutsky/bdfd-external";
+import { Variable } from "@nightnutsky/bdfd-external";
 
-Command.get({
-    authToken: 'Your auth token goes here',
-    botID: '1234567' /* A BDFD Bot ID */
-}, '1234567' /* A BDFD Command ID */).then(value => {
-    const { status, message } = <RequestError> value;
-    const { commandName, commandTrigger, commandLanguage } = <CommandResponse> value;
+const authToken = ''; // Your auth token
+const botID = ''; // Your BDFD bot ID
 
-    if (status) return console.error(`An error occured with the ${status} status code: ${message}`);
+Variable.list({ authToken, botID })
+.then((list) => {
+    const [variable] = list; // take the first variable
+    const {
+        variableName,
+        variableValue
+    } = variable;
 
-    console.log(`Your "${commandName}" command which has the "${commandTrigger}" command trigger is written in ${commandLanguage}`);
+    console.log(`The "${variableName || 'Unnamed variable'}" variable's value is "${variableValue || 'Empty'}"`);
+})
+.catch((error) => {
+    console.error('An error occured while getting the variable list:', error);
 });
-```
-
-#### Example Object Response
-```js
-{
-    commandName: 'Hello',
-    commandTrigger: '!hellow-world',
-    commandLanguage: 'BDScript 2',
-    commandLanguageID: '3',
-    commandCode: '$nomention\n' + '$allowMention\n' + 'Hello world!'
-}
 ```

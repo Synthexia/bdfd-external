@@ -1,61 +1,28 @@
-import type {
-    BotPathConstant,
-    CaseConstant,
-    CommandPathConstant,
-    RequestErrorConstant,
-    RequestStatusConstant,
-    RequestTypeConstant,
-    VariablePathConstant
-} from "../types/consts";
-
 const APP = 'https://botdesignerdiscord.com/app';
 
-export const
-    HOME_PATH = APP + '/home',
-    BOT_PATH: BotPathConstant = {
-        STATIC: `${APP}/bot/`,
-        DYNAMIC: (botID: string) => {
-            return `${APP}/bot/${botID};`
-        }
-    },
-    COMMAND_PATH: CommandPathConstant = (botID: string, commandID: string) => {
-        return `${BOT_PATH.STATIC + botID}/command/${commandID}`;
-    },
-    VARIABLE_PATH: VariablePathConstant = (botID: string, variableID: string) => {
-        return `${BOT_PATH.STATIC + botID}/variable/${variableID}`;
-    },
-    NEW_COMMAND_PATH = (botID: string) => {
-        return `${BOT_PATH.STATIC + botID}/new_command`;
-    },
-    NEW_VARIABLE_PATH = (botID: string) => {
-        return `${BOT_PATH.STATIC + botID}/new_variable`;
-    }
-;
-
-export const REQUEST_TYPE = Object.freeze( <RequestTypeConstant> {
-    CREATE: {
-        COMMAND: 'CREATE_COMMAND',
-        VARIABLE: 'CREATE_VARIABLE'
-    },
-    DELETE: {
-        COMMAND: 'DELETE_COMMAND',
-        VARIABLE: 'DELETE_VARIABLE'
-    },
-    GET: {
-        COMMAND: 'GET_COMMAND',
-        VARIABLE: 'GET_VARIABLE'
-    },
-    LIST: {
-        BOT: 'BOT_LIST',
-        COMMAND_VARIABLE: 'COMMAND_VARIABLE_LIST'
-    },
-    UPDATE: {
-        COMMAND: 'UPDATE_COMMAND',
-        VARIABLE: 'UPDATE_VARIABLE'
-    }
+export const HOME_PATH = APP + '/home';
+export const BOT_PATH = Object.freeze({
+    ROOT: `${APP}/bot`,
+    GENERATE: (botID: string) => (
+        `${BOT_PATH.ROOT}/${botID}`
+    )
 });
+export const COMMAND_PATH = (botID: string, commandID: string) => (
+    `${BOT_PATH.GENERATE(botID)}/command/${commandID}`
+);
+export const VARIABLE_PATH = (botID: string, variableID: string) => (
+    `${BOT_PATH.GENERATE(botID)}/variable/${variableID}`
+);
+export const NEW_COMMAND_PATH = (botID: string) => (
+    `${BOT_PATH.GENERATE(botID)}/new_command`
+);
+export const NEW_VARIABLE_PATH = (botID: string) => (
+    `${BOT_PATH.GENERATE(botID)}/new_variable`
+);
 
-export const CASE = Object.freeze( <CaseConstant> {
+export const FORM = 'form';
+
+export const CASE = Object.freeze({
     COMMAND: {
         NAME: 0,
         TRIGGER: 1,
@@ -68,7 +35,52 @@ export const CASE = Object.freeze( <CaseConstant> {
     }
 });
 
-export const REQUEST_STATUS = Object.freeze( <RequestStatusConstant> {
+export const enum REQUEST_CREATE {
+    COMMAND = 'createCommand',
+    VARIABLE = 'createVariable'
+}
+
+export const enum REQUEST_DELETE {
+    COMMAND = 'deleteCommand',
+    VARIABLE = 'deleteVariable'
+}
+
+export const enum REQUEST_GET {
+    COMMAND = 'getCommand',
+    VARIABLE = 'getVariable',
+    BOT_LIST = 'getBotList',
+    /**
+     * Command-Variable List
+     */
+    CVL = 'getCVL'
+}
+
+export const enum REQUEST_UPDATE {
+    COMMAND = 'updateCommand',
+    VARIABLE = 'updateVariable'
+}
+
+
+export const enum LANGUAGE_ID {
+    BDS = '0',
+    JS = '1',
+    BDSU = '2',
+    BDS2 = '3'
+}
+
+export const enum LANGUAGE_NAME {
+    BDS = 'BDScript',
+    JS = 'Javascript (ES5+BD.js)',
+    BDSU = 'BDScript Unstable',
+    BDS2 = 'BDScript 2'
+}
+
+export const enum REQUEST_METHOD {
+    POST = 'POST',
+    DELETE = 'DELETE'
+}
+
+export const REQUEST_STATUS = Object.freeze({
     SUCCESS: 200,
     FOUND: 302,
     SEE_OTHER: 303,
@@ -77,7 +89,18 @@ export const REQUEST_STATUS = Object.freeze( <RequestStatusConstant> {
     NOT_FOUND: 404
 });
 
-export const ERROR = Object.freeze( <RequestErrorConstant> {
+export const START_ATTEMPT = 0;
+export const START_TIMEOUT = 5000;
+export const MAX_REQUEST_ATTEMPTS = 5;
+export const RE_REQUEST_INTERVAL = 10;
+export const REQUEST_FAILED = Object.freeze({
+    RETRY: (attempt: number) => (
+        `Failed to request, retry in ${RE_REQUEST_INTERVAL}ms, ${MAX_REQUEST_ATTEMPTS - attempt} attempts left`
+    ),
+    NO_RETRY: 'Failed to request, will not retry! Details:\n'
+});
+
+export const ERROR = Object.freeze({
     AUTH_TOKEN(statusCode: number) {
         return {
             status: statusCode,
@@ -103,11 +126,9 @@ export const ERROR = Object.freeze( <RequestErrorConstant> {
         }
     },
     UNKNOWN(statusCode: number) {
-            return {
-                status: statusCode,
-                message: '[Unknown] Unknown Error.'
-
-            }
+        return {
+            status: statusCode,
+            message: '[Unknown] Unknown Error.'
         }
     }
-);
+});
