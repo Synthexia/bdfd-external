@@ -1,34 +1,37 @@
 import * as centra from "centra";
 import { JSDOM } from "jsdom";
+
 import {
     BOT_PATH,
     CASE,
     COMMAND_PATH,
     ERROR,
     HOME_PATH,
-    LANGUAGE_ID,
-    LANGUAGE_NAME,
     MAX_REQUEST_ATTEMPTS,
     NEW_COMMAND_PATH,
     NEW_VARIABLE_PATH,
-    REQUEST_CREATE,
-    REQUEST_DELETE,
-    REQUEST_GET,
     REQUEST_STATUS,
     START_TIMEOUT,
-    REQUEST_UPDATE,
     RE_REQUEST_INTERVAL,
     START_ATTEMPT,
     VARIABLE_PATH,
     REQUEST_FAILED,
-    REQUEST_METHOD,
     FORM
 } from "./consts";
-import type {
-    Request
-} from "../types/types";
 
-type RequestType = REQUEST_CREATE | REQUEST_DELETE | REQUEST_GET | REQUEST_UPDATE;
+import {
+    RequestCreate,
+    RequestDelete,
+    RequestGet,
+    RequestUpdate,
+    RequestMethod,
+    LanguageName,
+    LanguageId
+} from "./enums";
+
+import type { Request } from "../types/types";
+
+type RequestType = RequestCreate | RequestDelete | RequestGet | RequestUpdate;
 
 async function request(requestType: RequestType, requestData: Request.Data.Request): Promise<Request.Response.Request> {
     const authToken = `default-sessionStore=${requestData.authToken}`;
@@ -36,22 +39,25 @@ async function request(requestType: RequestType, requestData: Request.Data.Reque
     let centraRequest!: centra.Request;
 
     switch (requestType) {
-        case REQUEST_GET.BOT_LIST:
+        case RequestGet.User:
             centraRequest = centra(HOME_PATH);
             break;
-        case REQUEST_GET.CVL:
+        case RequestGet.BotList:
+            centraRequest = centra(HOME_PATH);
+            break;
+        case RequestGet.CVL:
             centraRequest = centra( BOT_PATH.GENERATE(requestData.botID!) );
             break;
-        case REQUEST_GET.COMMAND:
+        case RequestGet.Command:
             centraRequest = centra( COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!) );
             break;
-        case REQUEST_GET.VARIABLE:
+        case RequestGet.Variable:
             centraRequest = centra( VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!) );
             break;
-        case REQUEST_UPDATE.COMMAND:
+        case RequestUpdate.Command:
             centraRequest = centra(
                 COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!),
-                REQUEST_METHOD.POST
+                RequestMethod.Post
             ).body({
                 name: requestData.commandData!.commandName!,
                 command: requestData.commandData!.commandTrigger!,
@@ -59,31 +65,31 @@ async function request(requestType: RequestType, requestData: Request.Data.Reque
                 language: requestData.commandData!.commandLanguage!.id!
             }, FORM);
             break;
-        case REQUEST_UPDATE.VARIABLE:
+        case RequestUpdate.Variable:
             centraRequest = centra(
                 VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!),
-                REQUEST_METHOD.POST
+                RequestMethod.Post
             ).body({
                 name: requestData.variableData!.variableName!,
                 value: requestData.variableData!.variableValue!
             }, FORM);
             break;
-        case REQUEST_CREATE.COMMAND:
+        case RequestCreate.Command:
             centraRequest = centra( NEW_COMMAND_PATH(requestData.botID!) );
             break;
-        case REQUEST_CREATE.VARIABLE:
+        case RequestCreate.Variable:
             centraRequest = centra( NEW_VARIABLE_PATH(requestData.botID!) );
             break;
-        case REQUEST_DELETE.COMMAND:
+        case RequestDelete.Command:
             centraRequest = centra(
                 COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!),
-                REQUEST_METHOD.DELETE
+                RequestMethod.Delete
             );
             break;
-        case REQUEST_DELETE.VARIABLE:
+        case RequestDelete.Variable:
             centraRequest = centra(
                 VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!),
-                REQUEST_METHOD.DELETE
+                RequestMethod.Delete
             );
             break;
     }
@@ -152,18 +158,39 @@ function checkForError(statusCode: number) {
     }
 }
 
-function languageSwitcher(name: LANGUAGE_NAME) {
+function languageSwitcher(name: LanguageName) {
     switch (name) {
-        case LANGUAGE_NAME.BDS:
-            return LANGUAGE_ID.BDS;
-        case LANGUAGE_NAME.JS:
-            return LANGUAGE_ID.JS;
-        case LANGUAGE_NAME.BDSU:
-            return LANGUAGE_ID.BDSU;
-        case LANGUAGE_NAME.BDS2:
-            return LANGUAGE_ID.BDS2;
+        case LanguageName.BDS:
+            return LanguageId.BDS;
+        case LanguageName.JS:
+            return LanguageId.JS;
+        case LanguageName.BDSU:
+            return LanguageId.BDSU;
+        case LanguageName.BDS2:
+            return LanguageId.BDS2;
         default:
-            return LANGUAGE_ID.BDS2;
+            return LanguageId.BDS2;
+    }
+}
+
+export class User {
+    /**
+     * 
+     * @param baseData An object containing data for authorization
+     * @returns An authorized user's username
+     */
+    static async get(baseData: Omit<Request.Data.Base, 'botID'>): Promise<string> {
+        const document = await request(RequestGet.User, {
+            authToken: baseData.authToken
+        });
+
+        if (document.error) throw document.error;
+
+        const [divider] = document.response.getElementsByClassName('uk-heading-divider');
+        const [child] = divider.children;
+        const username = child.textContent!;
+
+        return username;
     }
 }
 
@@ -174,7 +201,7 @@ export class Bot {
      * @returns An array containing objects with a bot's info
      */
     static async list(baseData: Omit<Request.Data.Base, 'botID'>): Promise<Request.Response.Bots[]> {
-        const document = await request(REQUEST_GET.BOT_LIST, {
+        const document = await request(RequestGet.BotList, {
             authToken: baseData.authToken
         });
     
@@ -185,41 +212,28 @@ export class Bot {
         let botList: Request.Response.Bots[] = [];
     
         for (const botCard of botCards) {
-            const texts = botCard.getElementsByTagName('p')[0].textContent!
-                .replace(/\t/g, '')
-                .split('\n')
-            ;
+            const texts = botCard.getElementsByTagName('p')[0].textContent!.replace(/\t/g, '').split('\n');
             
-            const
-                botID = (botCard as HTMLAnchorElement).href.split('/').pop() ?? '',
-                botName = botCard.getElementsByClassName('uk-card-title')[0].textContent ?? ''
-            ;
+            const botID = (botCard as HTMLAnchorElement).href.split('/').pop() ?? '';
+            const botName = botCard.getElementsByClassName('uk-card-title')[0].textContent ?? '';
     
-            let
-                hostingTime = texts[2],
-                commandsText = '',
-                variablesText = ''
-            ;
+            let hostingTime = texts[2];
+            let commandCount = '';
+            let variableCount = '';
     
             if (hostingTime == 'Hosting already ended') {
-                commandsText = texts[5].trim();
-                variablesText = texts[6].trim();
+                commandCount = texts[5].trim();
+                variableCount = texts[6].trim();
             } else {
                 const innerHTML = botCard.getElementsByTagName('p')[0].innerHTML;
                 const rawHostingTimeDate = innerHTML.split('"date: ')[1].split('">')[0];
     
                 hostingTime = rawHostingTimeDate;
-                commandsText = texts[10].trim();
-                variablesText = texts[11].trim();
+                commandCount = texts[10].trim();
+                variableCount = texts[11].trim();
             }
     
-            botList.push({
-                botID,
-                botName,
-                hostingTime,
-                commandCount: commandsText,
-                variableCount: variablesText
-            });
+            botList.push({ botID, botName, hostingTime, commandCount, variableCount });
         }
     
         return botList;
@@ -230,11 +244,11 @@ export class Command {
     /**
      * 
      * @param baseData An object containing data for authorization
-     * @param commandData An object containing new command's data (with the exception of the `commandID` property)
+     * @param commandData An object containing new command's data
      * @returns An object containing created command's data
      */
-    static async create(baseData: Request.Data.Base, commandData: Omit<Request.Data.Command.Data, 'commandID'>): Promise<Request.Data.Command.Data> {
-        const document = await request(REQUEST_CREATE.COMMAND, {
+    static async create(baseData: Request.Data.Base, commandData: Partial<Omit<Request.Data.Command.Data, 'commandID'>>): Promise<Request.Data.Command.Data> {
+        const document = await request(RequestCreate.Command, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
@@ -242,32 +256,26 @@ export class Command {
         if (document.error) throw document.error;
 
         const languageNameRegExp = new RegExp(/^(?:BDScript ?(?:2|Unstable)?|Javascript \(ES5\+BD\.js\))$/gm);
-        const
-            commandID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!,
-            commandName = commandData.commandName ?? 'Unnamed command',
-            commandTrigger = commandData.commandTrigger ?? '',
-            commandCode = commandData.commandCode ?? '',
-            commandLanguage =
-                commandData.commandLanguage ?
-                commandData.commandLanguage.id ? { id: commandData.commandLanguage.id } :
-                commandData.commandLanguage.name ?
-                languageNameRegExp.test(commandData.commandLanguage.name) ? { name: commandData.commandLanguage.name } :
-                { id: '3' } : { id: '3' } : { id: '3' }
-        ;
-        const handledCommandData: Request.Data.Command.Data = {
-            commandID,
-            commandName,
-            commandTrigger,
-            commandCode,
-            commandLanguage
-        };
+
+        const commandID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!;
+        const commandName = commandData.commandName ?? 'Unnamed command';
+        const commandTrigger = commandData.commandTrigger ?? '';
+        const commandCode = commandData.commandCode ?? '';
+        const commandLanguage =
+        commandData.commandLanguage ?
+        commandData.commandLanguage.id ? { id: commandData.commandLanguage.id } :
+        commandData.commandLanguage.name ?
+        languageNameRegExp.test(commandData.commandLanguage.name) ? { name: commandData.commandLanguage.name } :
+        { id: '3' } : { id: '3' } : { id: '3' };
+
+        const newCommandData: Request.Data.Command.Data = { commandID, commandName, commandTrigger, commandCode, commandLanguage };
 
         await this.update({
             authToken: baseData.authToken,
             botID: baseData.botID
-        }, handledCommandData);
+        }, { commandName, commandTrigger, commandLanguage, commandCode }, commandID);
 
-        return handledCommandData;
+        return newCommandData;
     }
 
     /**
@@ -284,7 +292,7 @@ export class Command {
 
         if (( <Request.Error> deleted ).status) throw deleted;
     
-        const req = await request(REQUEST_DELETE.COMMAND, {
+        const req = await request(RequestDelete.Command, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: { commandID }
@@ -302,7 +310,7 @@ export class Command {
      * @returns An object containing command's data
      */
     static async get(baseData: Request.Data.Base, commandID: string): Promise<Request.Response.Command> {
-        const document = await request(REQUEST_GET.COMMAND, {
+        const document = await request(RequestGet.Command, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: { commandID }
@@ -312,12 +320,10 @@ export class Command {
     
         const divs = document.response.getElementsByClassName('uk-margin')
     
-        let
-            commandName = '',
-            commandTrigger = '',
-            commandLanguage: Request.Data.Command.LanguageData = {},
-            commandCode = ''
-        ;
+        let commandName = '';
+        let commandTrigger = '';
+        let commandLanguage: Request.Data.Command.LanguageData = {};
+        let commandCode = '';
     
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
@@ -345,12 +351,7 @@ export class Command {
             }
         }
     
-        return <Request.Response.Command> {
-            commandName,
-            commandTrigger,
-            commandLanguage,
-            commandCode
-        };
+        return <Request.Response.Command> { commandName, commandTrigger, commandLanguage, commandCode };
     }
 
     /**
@@ -359,19 +360,18 @@ export class Command {
      * @returns An array containing objects with a command's info
      */
     static async list(baseData: Request.Data.Base): Promise<Request.Response.Commands[]> {
-        const document = await request(REQUEST_GET.CVL, {
+        const document = await request(RequestGet.CVL, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
     
         if (document.error) throw document.error;
     
-        const children = document.response.getElementById('bot-switcher')!.children;
+        const [...children] = document.response.getElementById('bot-switcher')!.children;
     
-        const childrenArray = Array.from(children);
         let divs = [];
     
-        for (const child of childrenArray) {
+        for (const child of children) {
             if (child.nodeName == 'DIV') {
                 divs.push(child);
             }
@@ -379,27 +379,19 @@ export class Command {
     
         const divWithCommands = divs[1];
     
-        const commandCards = Array.from(divWithCommands.getElementsByClassName('commandCard'));
+        const [...commandCards] = divWithCommands.getElementsByClassName('commandCard');
     
         let commandList: Request.Response.Commands[] = [];
     
         for (const card of commandCards) {
-            const
-                commandDetails = card.getElementsByClassName('commandDetails'),
-                commandControls = card.getElementsByClassName('commandControls')
-            ;
+            const commandDetails = card.getElementsByClassName('commandDetails');
+            const commandControls = card.getElementsByClassName('commandControls');
     
-            const
-                commandName = commandDetails[0].children[0].textContent ?? '',
-                commandTrigger = commandDetails[0].children[1].textContent ?? '',
-                commandID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? ''
-            ;
+            const commandName = commandDetails[0].children[0].textContent ?? '';
+            const commandTrigger = commandDetails[0].children[1].textContent ?? '';
+            const commandID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? '';
     
-            commandList.push({
-                commandID,
-                commandName,
-                commandTrigger
-            });
+            commandList.push({ commandID, commandName, commandTrigger });
         }
     
         return commandList;
@@ -408,12 +400,11 @@ export class Command {
     /**
      * 
      * @param baseData An object containing data for authorization
-     * @param commandData An object containing new command's data (with the exception of the `commandID` property)
+     * @param commandData An object containing old command's data (with the exception of the `commandID` property)
+     * @param commandID A BDFD Command ID
      * @returns An object containing previous command's data
      */
-    static async update(baseData: Request.Data.Base, commandData: Request.Data.Command.Data): Promise<Request.Response.Command> {
-        const commandID = commandData?.commandID ? commandData.commandID : '';
-
+    static async update(baseData: Request.Data.Base, commandData: Partial<Omit<Request.Data.Command.Data, 'commandID'>>, commandID: string): Promise<Request.Response.Command> {
         const previous = await this.get({
             authToken: baseData.authToken,
             botID: baseData.botID
@@ -421,7 +412,7 @@ export class Command {
 
         if (( <Request.Error> previous ).status) throw previous;
     
-        const req = await request(REQUEST_UPDATE.COMMAND, {
+        const req = await request(RequestUpdate.Command, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             commandData: {
@@ -430,7 +421,7 @@ export class Command {
                 commandTrigger: commandData.commandTrigger ?? ( <Request.Response.Command> previous ).commandTrigger,
                 commandCode: commandData.commandCode ?? ( <Request.Response.Command> previous ).commandCode,
                 commandLanguage: {
-                    id: commandData.commandLanguage?.id ? commandData.commandLanguage.id : commandData.commandLanguage?.name ? languageSwitcher( <LANGUAGE_NAME> commandData.commandLanguage.name) : ( <Request.Response.Command> previous ).commandLanguage!.id
+                    id: commandData.commandLanguage?.id ? commandData.commandLanguage.id : commandData.commandLanguage?.name ? languageSwitcher( <LanguageName> commandData.commandLanguage.name) : ( <Request.Response.Command> previous ).commandLanguage!.id
                 }
             }
         });
@@ -448,31 +439,26 @@ export class Variable {
      * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
      * @returns An object containing created variable's data
      */
-    static async create(baseData: Request.Data.Base, variableData: Omit<Request.Data.Variable.Data, 'variableID'>): Promise<Request.Data.Variable.Data> {
-        const document = await request(REQUEST_CREATE.VARIABLE, {
+    static async create(baseData: Request.Data.Base, variableData: Partial<Omit<Request.Data.Variable.Data, 'variableID'>>): Promise<Request.Data.Variable.Data> {
+        const document = await request(RequestCreate.Variable, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
 
         if (document.error) throw document.error;
 
-        const
-            variableID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!,
-            variableName = variableData.variableName ?? 'Unnamed variable',
-            variableValue = variableData.variableValue ?? ''
-        ;
-        const handledVariableData: Request.Data.Variable.Data = {
-            variableID,
-            variableName,
-            variableValue
-        };
+        const variableID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!;
+        const variableName = variableData.variableName ?? 'Unnamed variable';
+        const variableValue = variableData.variableValue ?? '';
+
+        const newVariableData: Request.Data.Variable.Data = { variableID, variableName, variableValue };
 
         await this.update({
             authToken: baseData.authToken,
             botID: baseData.botID
-        }, handledVariableData);
+        }, { variableName, variableValue }, variableID);
 
-        return handledVariableData;
+        return newVariableData;
     }
 
     /**
@@ -489,7 +475,7 @@ export class Variable {
 
         if (( <Request.Error> deleted ).status) throw deleted;
     
-        const req = await request(REQUEST_DELETE.VARIABLE, {
+        const req = await request(RequestDelete.Variable, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: { variableID }
@@ -507,7 +493,7 @@ export class Variable {
      * @returns An object containing variable's data
      */
     static async get(baseData: Request.Data.Base, variableID: string): Promise<Request.Response.Variable> {
-        const document = await request(REQUEST_GET.VARIABLE, {
+        const document = await request(RequestGet.Variable, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: { variableID }
@@ -517,10 +503,8 @@ export class Variable {
     
         const divs = document.response.getElementsByClassName('uk-margin');
     
-        let
-            variableName = '',
-            variableValue = ''
-        ;
+        let variableName = '';
+        let variableValue = '';
     
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
@@ -533,10 +517,7 @@ export class Variable {
             }
         }
     
-        return <Request.Response.Variable> {
-            variableName,
-            variableValue
-        };
+        return <Request.Response.Variable> { variableName, variableValue };
     }
 
     /**
@@ -545,47 +526,38 @@ export class Variable {
      * @returns An array containing objects with a variable's info
      */
     static async list(baseData: Request.Data.Base): Promise<Request.Response.Variables[]> {
-        const document = await request(REQUEST_GET.CVL, {
+        const document = await request(RequestGet.CVL, {
             authToken: baseData.authToken,
             botID: baseData.botID
         });
     
         if (document.error) throw document.error;
     
-        const children = document.response.getElementById('bot-switcher')!.children;
+        const [...children] = document.response.getElementById('bot-switcher')!.children;
     
-        const childrenArray = Array.from(children);
         let divs = [];
     
-        for (const child of childrenArray) {
+        for (const child of children) {
             if (child.nodeName == 'DIV') {
                 divs.push(child);
             }
         }
     
         const divWithVariables = divs[2];
-    
-        const variableCards = Array.from(divWithVariables.getElementsByClassName('commandCard'));
-    
+
+        const [...variableCards] = divWithVariables.getElementsByClassName('commandCard');
+        
         let variableList: Request.Response.Variables[] = [];
     
         for (const card of variableCards) {
-            const
-                commandDetails = card.getElementsByClassName('commandDetails'),
-                commandControls = card.getElementsByClassName('commandControls')
-            ;
+            const commandDetails = card.getElementsByClassName('commandDetails');
+            const commandControls = card.getElementsByClassName('commandControls');
     
-            const
-                variableName = commandDetails[0].children[0].textContent ?? '',
-                variableValue = commandDetails[0].children[1].textContent ? (commandDetails[0].children[1].textContent.split('=').pop() ?? '') : '',
-                variableID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? ''
-            ;
+            const variableName = commandDetails[0].children[0].textContent ?? '';
+            const variableValue = commandDetails[0].children[1].textContent ? (commandDetails[0].children[1].textContent.split('=').pop() ?? '') : '';
+            const variableID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? '';
     
-            variableList.push({
-                variableID,
-                variableName,
-                variableValue
-            });
+            variableList.push({ variableID, variableName, variableValue });
         }
     
         return variableList;
@@ -594,12 +566,11 @@ export class Variable {
     /**
      * 
      * @param baseData An object containing data for authorization
-     * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
+     * @param variableData An object containing old variable's data (with the exception of the `variableID` property)
+     * @param variableID A BDFD Variable ID
      * @returns An object containing previous variable's data
      */
-    static async update(baseData: Request.Data.Base, variableData: Request.Data.Variable.Data): Promise<Request.Response.Variable> {
-        const variableID = variableData?.variableID ? variableData.variableID : '';
-
+    static async update(baseData: Request.Data.Base, variableData: Partial<Omit<Request.Data.Variable.Data, 'variableID'>>, variableID: string): Promise<Request.Response.Variable> {
         const previous = await this.get({
             authToken: baseData.authToken,
             botID: baseData.botID
@@ -607,7 +578,7 @@ export class Variable {
 
         if (( <Request.Error> previous ).status) throw previous;
     
-        const req = await request(REQUEST_UPDATE.VARIABLE, {
+        const req = await request(RequestUpdate.Variable, {
             authToken: baseData.authToken,
             botID: baseData.botID,
             variableData: {
