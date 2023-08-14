@@ -5,11 +5,11 @@ export namespace Request {
             response: Document;
         }
 
-        interface Command extends Omit<Data.Command.Data, 'commandID'> { }
-        interface Commands extends Omit<Data.Command.Data, 'commandLanguage' | 'commandCode'> { }
-        interface Variable extends Omit<Data.Variable.Data, 'variableID'> { }
-        interface Variables extends Data.Variable.Data { }
-        interface Bots extends Data.Bot.Data { }
+        interface Command extends Omit<Data.Command.Data, 'commandID'> {}
+        interface Commands extends Omit<Data.Command.Data, 'commandLanguage' | 'commandCode'> {}
+        interface Variable extends Omit<Data.Variable.Data, 'variableID'> {}
+        interface Variables extends Data.Variable.Data {}
+        interface Bots extends Data.Bot.Data {}
     }
 
     interface Error {

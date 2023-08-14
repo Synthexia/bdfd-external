@@ -1,29 +1,30 @@
 {
-  "name": "@nightnutsky/bdfd-external",
-  "version": "1.2.0",
-  "description": "A package that allows you to work with BDFD externally",
-  "author": "NightNutSky",
-  "license": "MIT",
-  "repository": {
-    "url": "https://github.com/NightNutSky/bdfd-external"
-  },
-  "main": "dist/index.js",
-  "types": "types/types.d.ts",
-  "scripts": {
-    "build": "tsc -p . && npm pack"
-  },
-  "keywords": [
-    "bdfd",
-    "external",
-    "bdfd-external",
-    "bdfdexternal"
-  ],
-  "dependencies": {
-    "centra": "2.6.0",
-    "jsdom": "21.1.1"
-  },
-  "devDependencies": {
-    "@types/jsdom": "21.1.1",
-    "@types/centra": "2.2.0"
-  }
+    "name": "@synthexia/bdfd-external",
+    "version": "2.0.0",
+    "description": "A package that allows you to work with BDFD externally",
+    "author": "Kitomanari",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Synthexia/bdfd-external"
+    },
+    "main": "dist/index.js",
+    "types": "types/types.d.ts",
+    "scripts": {
+        "build": "tsc -p . && pnpm pack"
+    },
+    "keywords": [
+        "bdfd",
+        "external",
+        "bdfd-external",
+        "bdfdexternal"
+    ],
+    "dependencies": {
+        "centra": "2.6.0",
+        "jsdom": "21.1.1"
+    },
+    "devDependencies": {
+        "@types/jsdom": "21.1.1",
+        "@types/centra": "2.2.0"
+    }
 }
