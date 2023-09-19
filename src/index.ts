@@ -2,136 +2,235 @@ import * as centra from "centra";
 import { JSDOM } from "jsdom";
 
 import {
-    BOT_PATH,
-    CASE,
-    COMMAND_PATH,
-    ERROR,
-    HOME_PATH,
+    Data,
+    Request,
+    LanguageId,
+    LanguageName,
+} from "../types";
+
+import {
+    DEFAULT_SESSION_STORE,
+    FORM,
     MAX_REQUEST_ATTEMPTS,
-    NEW_COMMAND_PATH,
-    NEW_VARIABLE_PATH,
-    REQUEST_STATUS,
-    START_TIMEOUT,
+    REQUEST_FAILED,
     RE_REQUEST_INTERVAL,
     START_ATTEMPT,
-    VARIABLE_PATH,
-    REQUEST_FAILED,
-    FORM
+    START_TIMEOUT
 } from "./consts";
 
 import {
-    RequestCreate,
-    RequestDelete,
-    RequestGet,
-    RequestUpdate,
-    RequestMethod,
-    LanguageName,
-    LanguageId
-} from "./enums";
+    ErrorType,
+    Path,
+    checkForError,
+    generatePath,
+    getErrorData,
+    getLanguageIdByName
+} from "./utils";
 
-import type { Request } from "../types/types";
+const enum Create {
+    Command = 'createCommand',
+    Variable = 'createVariable'
+}
 
-type RequestType = RequestCreate | RequestDelete | RequestGet | RequestUpdate;
+const enum Delete {
+    Command = 'deleteCommand',
+    Variable = 'deleteVariable'
+}
 
-async function request(requestType: RequestType, requestData: Request.Data.Request): Promise<Request.Response.Request> {
-    const authToken = `default-sessionStore=${requestData.authToken}`;
+const enum Get {
+    User = 'getUser',
+    Command = 'getCommand',
+    Variable = 'getVariable',
+    BotList = 'getBotList',
+    CommandVariableList = 'getCommandVariableList'
+}
+
+const enum Update {
+    Command = 'updateCommand',
+    Variable = 'updateVariable'
+}
+
+const enum Method {
+    Post = 'POST',
+    Delete = 'DELETE'
+}
+
+const enum CommandDivElement {
+    Name,
+    Trigger,
+    Code,
+    Language
+}
+
+const enum VariableDivElement {
+    Name,
+    Value
+}
+
+const enum CommandVariableListDivElement {
+    Command = 1,
+    Variable
+}
+
+type RequestOptions =
+    | { type: Get.User | Get.BotList }
+    | { type: Get.CommandVariableList | Create.Command | Create.Variable, botId: string }
+    | { type: Get.Command | Delete.Command, botId: string, commandId: string }
+    | { type: Get.Variable | Delete.Variable, botId: string, variableId: string }
+    | { type: Update.Command, botId: string, commandId: string, data: Data.Command.Partial }
+    | { type: Update.Variable, botId: string, variableId: string, data: { name: string, value: string } };
+
+interface CommandBody {
+    /**
+     * Command name
+     */
+    name: string;
+    /**
+     * Command trigger
+     */
+    command: string;
+    /**
+     * Command code
+     */
+    replyMessage: string;
+    /**
+     * Language ID
+     */
+    language: LanguageId;
+}
+
+interface VariableBody {
+    /**
+     * Variable name
+     */
+    name: string;
+    /**
+     * Variable value
+     */
+    value: string;
+}
+
+async function makeRequest(options: RequestOptions, authToken: string) {
+    if (
+        !authToken.includes(DEFAULT_SESSION_STORE)
+        &&
+        authToken.split('=')[0] != DEFAULT_SESSION_STORE
+    ) authToken = `${DEFAULT_SESSION_STORE}=${authToken}`;
 
     let centraRequest!: centra.Request;
 
-    switch (requestType) {
-        case RequestGet.User:
-            centraRequest = centra(HOME_PATH);
+    switch (options.type) {
+        case Get.User:
+            centraRequest = centra(generatePath({ type: Path.Home }));
             break;
-        case RequestGet.BotList:
-            centraRequest = centra(HOME_PATH);
+        case Get.BotList:
+            centraRequest = centra(generatePath({ type: Path.Home }));
             break;
-        case RequestGet.CVL:
-            centraRequest = centra( BOT_PATH.GENERATE(requestData.botID!) );
+        case Get.Command:
+            centraRequest = centra(generatePath({
+                type: Path.Command,
+                botId: options.botId,
+                commandId: options.commandId
+            }));
             break;
-        case RequestGet.Command:
-            centraRequest = centra( COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!) );
+        case Get.Variable:
+            centraRequest = centra(generatePath({
+                type: Path.Variable,
+                botId: options.botId,
+                variableId: options.variableId
+            }));
             break;
-        case RequestGet.Variable:
-            centraRequest = centra( VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!) );
+        case Get.CommandVariableList:
+            centraRequest = centra(generatePath({
+                type: Path.Bot,
+                botId: options.botId
+            }));
             break;
-        case RequestUpdate.Command:
-            centraRequest = centra(
-                COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!),
-                RequestMethod.Post
-            ).body({
-                name: requestData.commandData!.commandName!,
-                command: requestData.commandData!.commandTrigger!,
-                replyMessage: requestData.commandData!.commandCode!,
-                language: requestData.commandData!.commandLanguage!.id!
-            }, FORM);
+        case Create.Command:
+            centraRequest = centra(generatePath({
+                type: Path.NewCommand,
+                botId: options.botId
+            }));
             break;
-        case RequestUpdate.Variable:
-            centraRequest = centra(
-                VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!),
-                RequestMethod.Post
-            ).body({
-                name: requestData.variableData!.variableName!,
-                value: requestData.variableData!.variableValue!
-            }, FORM);
+        case Create.Variable:
+            centraRequest = centra(generatePath({
+                type: Path.NewVariable,
+                botId: options.botId
+            }));
             break;
-        case RequestCreate.Command:
-            centraRequest = centra( NEW_COMMAND_PATH(requestData.botID!) );
+        case Delete.Command:
+            centraRequest = centra(generatePath({
+                type: Path.Command,
+                botId: options.botId,
+                commandId: options.commandId
+            }), Method.Delete);
             break;
-        case RequestCreate.Variable:
-            centraRequest = centra( NEW_VARIABLE_PATH(requestData.botID!) );
+        case Delete.Variable:
+            centraRequest = centra(generatePath({
+                type: Path.Variable,
+                botId: options.botId,
+                variableId: options.variableId
+            }), Method.Delete);
             break;
-        case RequestDelete.Command:
-            centraRequest = centra(
-                COMMAND_PATH(requestData.botID!, requestData.commandData!.commandID!),
-                RequestMethod.Delete
-            );
+        case Update.Command:
+            centraRequest = centra(generatePath({
+                type: Path.Command,
+                botId: options.botId,
+                commandId: options.commandId
+            }), Method.Post).body({
+                name: options.data.name,
+                command: options.data.trigger,
+                replyMessage: options.data.code,
+                language: getLanguageIdByName(options.data.languageName)
+            } satisfies CommandBody, FORM);
             break;
-        case RequestDelete.Variable:
-            centraRequest = centra(
-                VARIABLE_PATH(requestData.botID!, requestData.variableData!.variableID!),
-                RequestMethod.Delete
-            );
+        case Update.Variable:
+            centraRequest = centra(generatePath({
+                type: Path.Variable,
+                botId: options.botId,
+                variableId: options.variableId
+            }), Method.Post).body({
+                name: options.data.name,
+                value: options.data.value
+            } satisfies VariableBody, FORM);
             break;
     }
-
+    
     const centraResponse = await new Promise<centra.Response>((resolve, reject) => {
-        const request = (
-            centraRequest
+        const request = centraRequest
             .header('cookie', authToken)
-            .timeout(START_TIMEOUT)
-        );
+            .timeout(START_TIMEOUT);
         
         let attempt = START_ATTEMPT;
         let timeout = START_TIMEOUT;
 
         function sendRequest() {
-            request
-            .send()
-            .then((res) => resolve(res))
-            .catch((err) => {
-                attempt++;
-                timeout += 1000;
+            request.send()
+                .then((response) => resolve(response))
+                .catch((error) => {
+                    attempt++;
+                    timeout += 1000;
 
-                if (attempt === MAX_REQUEST_ATTEMPTS) {
-                    console.error(REQUEST_FAILED.NO_RETRY, err);
+                    if (attempt == MAX_REQUEST_ATTEMPTS) {
+                        console.error(REQUEST_FAILED.NO_RETRY, error);
 
-                    reject( ERROR.UNKNOWN(1) );
-                } else {
-                    console.info(REQUEST_FAILED.RETRY(attempt));
+                        reject(getErrorData(ErrorType.Unknown, Request.Status.Unknown));
+                    } else {
+                        console.info(REQUEST_FAILED.RETRY(attempt));
 
-                    setTimeout(() => {
-                        request.timeout(timeout);
-                        sendRequest();
-                    }, RE_REQUEST_INTERVAL);
-                }
-            });
+                        setTimeout(() => {
+                            request.timeout(timeout);
+                            sendRequest();
+                        }, RE_REQUEST_INTERVAL);
+                    }
+                });
         }
-        
+
         sendRequest();
     });
 
     const response = await centraResponse.text();
-    const status = centraResponse.statusCode!;
+    const status = <Request.Status> centraResponse.statusCode;
 
     return {
         error: checkForError(status),
@@ -139,50 +238,14 @@ async function request(requestType: RequestType, requestData: Request.Data.Reque
     };
 }
 
-function checkForError(statusCode: number) {
-    switch (statusCode) {
-        case REQUEST_STATUS.SUCCESS:
-            return false;
-        case REQUEST_STATUS.SEE_OTHER:
-            return false;
-        case REQUEST_STATUS.FOUND:
-            return ERROR.AUTH_TOKEN(statusCode);
-        case REQUEST_STATUS.BAD_REQUEST:
-            return ERROR.MISSING(statusCode);
-        case REQUEST_STATUS.FORBIDDEN:
-            return ERROR.LIMIT(statusCode);
-        case REQUEST_STATUS.NOT_FOUND:
-            return ERROR.GENERAL(statusCode);
-        default:
-            return ERROR.UNKNOWN(statusCode);
-    }
-}
-
-function languageSwitcher(name: LanguageName) {
-    switch (name) {
-        case LanguageName.BDS:
-            return LanguageId.BDS;
-        case LanguageName.JS:
-            return LanguageId.JS;
-        case LanguageName.BDSU:
-            return LanguageId.BDSU;
-        case LanguageName.BDS2:
-            return LanguageId.BDS2;
-        default:
-            return LanguageId.BDS2;
-    }
-}
-
 export class User {
     /**
+     * Get an authorized user's username 
      * 
-     * @param baseData An object containing data for authorization
-     * @returns An authorized user's username
+     * @param authToken An auth token
      */
-    static async get(baseData: Omit<Request.Data.Base, 'botID'>): Promise<string> {
-        const document = await request(RequestGet.User, {
-            authToken: baseData.authToken
-        });
+    public static async get(authToken: string): Promise<string> {
+        const document = await makeRequest({ type: Get.User }, authToken);
 
         if (document.error) throw document.error;
 
@@ -196,26 +259,33 @@ export class User {
 
 export class Bot {
     /**
+     * Get bot list
      * 
-     * @param baseData An object containing data for authorization
-     * @returns An array containing objects with a bot's info
+     * @param authToken An auth token
      */
-    static async list(baseData: Omit<Request.Data.Base, 'botID'>): Promise<Request.Response.Bots[]> {
-        const document = await request(RequestGet.BotList, {
-            authToken: baseData.authToken
-        });
-    
+    public static async list(authToken: string): Promise<Request.Response.BotList[]> {
+        const document = await makeRequest({ type: Get.BotList }, authToken);
+
         if (document.error) throw document.error;
-    
+
         const botCards = document.response.getElementsByClassName('botCard');
-    
-        let botList: Request.Response.Bots[] = [];
+
+        let botList: Data.Bot.Base[] = [];
     
         for (const botCard of botCards) {
-            const texts = botCard.getElementsByTagName('p')[0].textContent!.replace(/\t/g, '').split('\n');
+            const texts = botCard
+                .getElementsByTagName('p')[0]
+                .textContent!
+                .replace(/\t/g, '')
+                .split('\n');
             
-            const botID = (botCard as HTMLAnchorElement).href.split('/').pop() ?? '';
-            const botName = botCard.getElementsByClassName('uk-card-title')[0].textContent ?? '';
+            const botId = (botCard as HTMLAnchorElement)
+                .href
+                .split('/')
+                .pop() ?? '';
+            const botName = botCard
+                .getElementsByClassName('uk-card-title')[0]
+                .textContent || '';
     
             let hostingTime = texts[2];
             let commandCount = '';
@@ -225,15 +295,25 @@ export class Bot {
                 commandCount = texts[5].trim();
                 variableCount = texts[6].trim();
             } else {
-                const innerHTML = botCard.getElementsByTagName('p')[0].innerHTML;
-                const rawHostingTimeDate = innerHTML.split('"date: ')[1].split('">')[0];
+                const innerHTML = botCard
+                    .getElementsByTagName('p')[0]
+                    .innerHTML;
+                const rawHostingTimeDate = innerHTML
+                    .split('"date: ')[1]
+                    .split('">')[0];
     
                 hostingTime = rawHostingTimeDate;
                 commandCount = texts[10].trim();
                 variableCount = texts[11].trim();
             }
     
-            botList.push({ botID, botName, hostingTime, commandCount, variableCount });
+            botList.push({
+                id: botId,
+                name: botName,
+                hosting: hostingTime,
+                commandCount,
+                variableCount
+            });
         }
     
         return botList;
@@ -243,353 +323,370 @@ export class Bot {
 export class Command {
     /**
      * 
-     * @param baseData An object containing data for authorization
-     * @param commandData An object containing new command's data
-     * @returns An object containing created command's data
-     */
-    static async create(baseData: Request.Data.Base, commandData: Partial<Omit<Request.Data.Command.Data, 'commandID'>>): Promise<Request.Data.Command.Data> {
-        const document = await request(RequestCreate.Command, {
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        });
-
-        if (document.error) throw document.error;
-
-        const languageNameRegExp = new RegExp(/^(?:BDScript ?(?:2|Unstable)?|Javascript \(ES5\+BD\.js\))$/gm);
-
-        const commandID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!;
-        const commandName = commandData.commandName ?? 'Unnamed command';
-        const commandTrigger = commandData.commandTrigger ?? '';
-        const commandCode = commandData.commandCode ?? '';
-        const commandLanguage =
-        commandData.commandLanguage ?
-        commandData.commandLanguage.id ? { id: commandData.commandLanguage.id } :
-        commandData.commandLanguage.name ?
-        languageNameRegExp.test(commandData.commandLanguage.name) ? { name: commandData.commandLanguage.name } :
-        { id: '3' } : { id: '3' } : { id: '3' };
-
-        const newCommandData: Request.Data.Command.Data = { commandID, commandName, commandTrigger, commandCode, commandLanguage };
-
-        await this.update({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, { commandName, commandTrigger, commandLanguage, commandCode }, commandID);
-
-        return newCommandData;
-    }
-
-    /**
+     * Get command data
      * 
-     * @param baseData An object containing data for authorization
-     * @param commandID A BDFD Command ID
-     * @returns An object containing deleted command's data
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param commandId A command id
      */
-    static async delete(baseData: Request.Data.Base, commandID: string): Promise<Request.Response.Command> {
-        const deleted = await this.get({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, commandID).catch((e: Request.Error) => e);
+    public static async get(authToken: string, botId: string, commandId: string): Promise<Request.Response.Command> {
+        const document = await makeRequest({
+            type: Get.Command,
+            botId,
+            commandId
+        }, authToken);
 
-        if (( <Request.Error> deleted ).status) throw deleted;
-    
-        const req = await request(RequestDelete.Command, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            commandData: { commandID }
-        });
-    
-        if (req.error) throw req.error;
-    
-        return <Request.Response.Command> deleted;
-    }
-
-    /**
-     * 
-     * @param baseData An object containing data for authorization
-     * @param commandID A BDFD Command ID
-     * @returns An object containing command's data
-     */
-    static async get(baseData: Request.Data.Base, commandID: string): Promise<Request.Response.Command> {
-        const document = await request(RequestGet.Command, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            commandData: { commandID }
-        });
-    
         if (document.error) throw document.error;
     
         const divs = document.response.getElementsByClassName('uk-margin')
     
-        let commandName = '';
-        let commandTrigger = '';
-        let commandLanguage: Request.Data.Command.LanguageData = {};
-        let commandCode = '';
-    
+        let name!: string;
+        let trigger!: string;
+        let code!: string;
+        const language = <Data.Command.Language> {};
+        
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
-                case CASE.COMMAND.NAME:
-                    commandName = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
+                case CommandDivElement.Name:
+                    name = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.COMMAND.TRIGGER:
-                    commandTrigger = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
+                case CommandDivElement.Trigger:
+                    trigger = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.COMMAND.CODE:
-                    commandCode = (divs[i].getElementsByClassName('uk-textarea')[0] as HTMLInputElement).defaultValue;
+                case CommandDivElement.Code:
+                    code = (divs[i].getElementsByClassName('uk-textarea')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.COMMAND.LANGUAGE:
+                case CommandDivElement.Language:
                     const selector = divs[i].getElementsByClassName('uk-select')[0] as HTMLSelectElement;
     
                     for (const option of selector) {
                         if (option.selected) {
-                            commandLanguage = {
-                                id: option.value,
-                                name: option.textContent!
-                            };
+                            language.id = <LanguageId> option.value;
+                            language.name = <LanguageName> option.textContent!;
                         }
                     }
                     break;
             }
         }
     
-        return <Request.Response.Command> { commandName, commandTrigger, commandLanguage, commandCode };
+        return { name, trigger, code, language } satisfies Request.Response.Command;
     }
 
     /**
      * 
-     * @param baseData An object containing data for authorization
-     * @returns An array containing objects with a command's info
+     * Create a new command
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param data The data with which the command will be created
      */
-    static async list(baseData: Request.Data.Base): Promise<Request.Response.Commands[]> {
-        const document = await request(RequestGet.CVL, {
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        });
-    
+    public static async create(authToken: string, botId: string, data: Partial<Data.Command.Partial>): Promise<Data.Command.Base> {
+        const document = await makeRequest({
+            type: Create.Command,
+            botId
+        }, authToken);
+
         if (document.error) throw document.error;
-    
+
+        const commandId = document.response
+            .getElementsByTagName('a')[0].href
+            .split('/')
+            .pop()!;
+
+        const commandData = {
+            name: data.name ?? 'Unnamed command',
+            trigger: data.trigger ?? '',
+            code: data.code ?? '',
+            languageName: data.languageName ?? LanguageName.BDS2
+        } satisfies Required<Data.Command.Partial>;
+
+        await this.update(authToken, botId, commandId, commandData);
+
+        return {
+            id: commandId,
+            name: commandData.name,
+            trigger: commandData.trigger,
+            code: commandData.code,
+            language: {
+                id: getLanguageIdByName(commandData.languageName),
+                name: commandData.languageName
+            }
+        } satisfies Data.Command.Base;
+    }
+
+    /**
+     * 
+     * Update a command
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param commandId A command id
+     * @param data The data which should be updated
+     */
+    public static async update(authToken: string, botId: string, commandId: string, data: Partial<Data.Command.Partial>): Promise<Request.Response.Command> {
+        const oldCommandData = await this.get(authToken, botId, commandId)
+            .catch((e: Data.Error) => {
+                throw e;
+            });
+
+        const request = await makeRequest({
+            type: Update.Command,
+            botId,
+            commandId,
+            data: {
+                name: data.name ?? oldCommandData.name,
+                trigger: data.trigger ?? oldCommandData.trigger,
+                code: data.code ?? oldCommandData.code,
+                languageName: data.languageName ?? LanguageName.BDS2
+            }
+        }, authToken);
+
+        if (request.error) throw request.error;
+
+        return oldCommandData;
+    }
+
+    /**
+     * 
+     * Delete a command
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param commandId A command id
+     */
+    public static async delete(authToken: string, botId: string, commandId: string): Promise<Request.Response.Command> {
+        const oldCommandData = await this.get(authToken, botId, commandId)
+            .catch((e: Data.Error) => {
+                throw e;
+            });
+        
+        const request = await makeRequest({
+            type: Delete.Command,
+            botId,
+            commandId
+        }, authToken);
+
+        if (request.error) throw request.error;
+
+        return oldCommandData;
+    }
+
+    /**
+     * 
+     * Get command list
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     */
+    public static async list(authToken: string, botId: string): Promise<Request.Response.CommandList[]> {
+        const document = await makeRequest({
+            type: Get.CommandVariableList,
+            botId
+        }, authToken);
+
+        if (document.error) throw document.error;
+
         const [...children] = document.response.getElementById('bot-switcher')!.children;
-    
-        let divs = [];
-    
+
+        const divList: Element[] = [];
+
         for (const child of children) {
             if (child.nodeName == 'DIV') {
-                divs.push(child);
+                divList.push(child);
             }
         }
-    
-        const divWithCommands = divs[1];
-    
+
+        const divWithCommands = divList[CommandVariableListDivElement.Command];
         const [...commandCards] = divWithCommands.getElementsByClassName('commandCard');
     
-        let commandList: Request.Response.Commands[] = [];
-    
+        const commandList: Request.Response.CommandList[] = [];
+
         for (const card of commandCards) {
             const commandDetails = card.getElementsByClassName('commandDetails');
             const commandControls = card.getElementsByClassName('commandControls');
     
-            const commandName = commandDetails[0].children[0].textContent ?? '';
-            const commandTrigger = commandDetails[0].children[1].textContent ?? '';
-            const commandID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? '';
+            const id = (commandControls[0].children[0] as HTMLAnchorElement).href
+                .split('/')
+                .pop()!;
+            const name = commandDetails[0].children[0].textContent!;
+            const trigger = commandDetails[0].children[1].textContent!;
     
-            commandList.push({ commandID, commandName, commandTrigger });
+            commandList.push({ id, name, trigger });
         }
     
         return commandList;
-    }
-
-    /**
-     * 
-     * @param baseData An object containing data for authorization
-     * @param commandData An object containing old command's data (with the exception of the `commandID` property)
-     * @param commandID A BDFD Command ID
-     * @returns An object containing previous command's data
-     */
-    static async update(baseData: Request.Data.Base, commandData: Partial<Omit<Request.Data.Command.Data, 'commandID'>>, commandID: string): Promise<Request.Response.Command> {
-        const previous = await this.get({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, commandID).catch((e: Request.Error) => e);
-
-        if (( <Request.Error> previous ).status) throw previous;
-    
-        const req = await request(RequestUpdate.Command, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            commandData: {
-                commandID,
-                commandName: commandData.commandName ?? ( <Request.Response.Command> previous ).commandName,
-                commandTrigger: commandData.commandTrigger ?? ( <Request.Response.Command> previous ).commandTrigger,
-                commandCode: commandData.commandCode ?? ( <Request.Response.Command> previous ).commandCode,
-                commandLanguage: {
-                    id: commandData.commandLanguage?.id ? commandData.commandLanguage.id : commandData.commandLanguage?.name ? languageSwitcher( <LanguageName> commandData.commandLanguage.name) : ( <Request.Response.Command> previous ).commandLanguage!.id
-                }
-            }
-        });
-    
-        if (req.error) throw req.error;
-    
-        return <Request.Response.Command> previous;
     }
 }
 
 export class Variable {
     /**
      * 
-     * @param baseData An object containing data for authorization
-     * @param variableData An object containing new variable's data (with the exception of the `variableID` property)
-     * @returns An object containing created variable's data
-     */
-    static async create(baseData: Request.Data.Base, variableData: Partial<Omit<Request.Data.Variable.Data, 'variableID'>>): Promise<Request.Data.Variable.Data> {
-        const document = await request(RequestCreate.Variable, {
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        });
-
-        if (document.error) throw document.error;
-
-        const variableID = document.response.getElementsByTagName('a')[0].href.split('/').pop()!;
-        const variableName = variableData.variableName ?? 'Unnamed variable';
-        const variableValue = variableData.variableValue ?? '';
-
-        const newVariableData: Request.Data.Variable.Data = { variableID, variableName, variableValue };
-
-        await this.update({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, { variableName, variableValue }, variableID);
-
-        return newVariableData;
-    }
-
-    /**
+     * Get variable data
      * 
-     * @param baseData An object containing data for authorization
-     * @param variableID A BDFD Variable ID
-     * @returns An object containing deleted variable's data
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param variableId A variable id
      */
-    static async delete(baseData: Request.Data.Base, variableID: string): Promise<Request.Response.Variable> {
-        const deleted = await this.get({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, variableID).catch((e: Request.Error) => e);
-
-        if (( <Request.Error> deleted ).status) throw deleted;
-    
-        const req = await request(RequestDelete.Variable, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            variableData: { variableID }
-        });
-    
-        if (req.error) throw req.error;
-    
-        return <Request.Response.Variable> deleted;
-    }
-
-    /**
-     * 
-     * @param baseData An object containing data for authorization
-     * @param variableID A BDFD Variable ID
-     * @returns An object containing variable's data
-     */
-    static async get(baseData: Request.Data.Base, variableID: string): Promise<Request.Response.Variable> {
-        const document = await request(RequestGet.Variable, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            variableData: { variableID }
-        });
+    public static async get(authToken: string, botId: string, variableId: string): Promise<Request.Response.Variable> {
+        const document = await makeRequest({
+            type: Get.Variable,
+            botId,
+            variableId
+        }, authToken);
     
         if (document.error) throw document.error;
     
         const divs = document.response.getElementsByClassName('uk-margin');
     
-        let variableName = '';
-        let variableValue = '';
+        let name!: string;
+        let value!: string;
     
         for (let i = 0; i < divs.length; i++) {
             switch (i) {
-                case CASE.VARIABLE.NAME:
-                    variableName = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
+                case VariableDivElement.Name:
+                    name = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
-                case CASE.VARIABLE.VALUE:
-                    variableValue = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
+                case VariableDivElement.Value:
+                    value = (divs[i].getElementsByClassName('uk-input')[0] as HTMLInputElement).defaultValue;
                     break;
             }
         }
     
-        return <Request.Response.Variable> { variableName, variableValue };
+        return { name, value } satisfies Request.Response.Variable;
     }
 
     /**
      * 
-     * @param baseData An object containing data for authorization
-     * @returns An array containing objects with a variable's info
+     * Create a new variable
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param data The data with which the variable will be created
      */
-    static async list(baseData: Request.Data.Base): Promise<Request.Response.Variables[]> {
-        const document = await request(RequestGet.CVL, {
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        });
-    
+    public static async create(authToken: string, botId: string, data: Partial<Omit<Data.Variable.Base, 'id'>>): Promise<Data.Variable.Base> {
+        const document = await makeRequest({
+            type: Create.Variable,
+            botId
+        }, authToken);
+
         if (document.error) throw document.error;
-    
+
+        const variableId = document.response
+            .getElementsByTagName('a')[0].href
+            .split('/')
+            .pop()!;
+
+        const variableData = {
+            name: data.name ?? 'Unnamed variable',
+            value: data.value ?? ''
+        } satisfies Request.Response.Variable;
+
+        await this.update(authToken, botId, variableId, variableData);
+
+        return {
+            id: variableId,
+            ...variableData   
+        } satisfies Data.Variable.Base;
+    }
+
+    /**
+     * 
+     * Update a variable
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param variableId A variable id
+     * @param data The data which should be updated
+     */
+    public static async update(authToken: string, botId: string, variableId: string, data: Partial<Request.Response.Variable>): Promise<Request.Response.Variable> {
+        const oldVariableData = await this.get(authToken, botId, variableId)
+            .catch((e: Data.Error) => {
+                throw e;
+            });
+
+        const request = await makeRequest({
+            type: Update.Variable,
+            botId,
+            variableId,
+            data: {
+                name: data.name ?? oldVariableData.name,
+                value: data.value ?? oldVariableData.value
+            }
+        }, authToken);
+
+        if (request.error) throw request.error;
+
+        return oldVariableData;
+    }
+
+    /**
+     * 
+     * Delete a variable
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     * @param variableId A variable id
+     */
+    public static async delete(authToken: string, botId: string, variableId: string): Promise<Request.Response.Variable> {
+        const oldVariableData = await this.get(authToken, botId, variableId)
+            .catch((e: Data.Error) => {
+                throw e;
+            });
+        
+        const request = await makeRequest({
+            type: Delete.Variable,
+            botId,
+            variableId
+        }, authToken);
+
+        if (request.error) throw request.error;
+
+        return oldVariableData;
+    }
+
+    /**
+     * 
+     * Get variable list
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     */
+    public static async list(authToken: string, botId: string): Promise<Request.Response.VariableList[]> {
+        const document = await makeRequest({
+            type: Get.CommandVariableList,
+            botId
+        }, authToken);
+
+        if (document.error) throw document.error;
+
         const [...children] = document.response.getElementById('bot-switcher')!.children;
-    
-        let divs = [];
-    
+
+        const divList: Element[] = [];
+
         for (const child of children) {
             if (child.nodeName == 'DIV') {
-                divs.push(child);
+                divList.push(child);
             }
         }
-    
-        const divWithVariables = divs[2];
 
+        const divWithVariables = divList[CommandVariableListDivElement.Variable];
         const [...variableCards] = divWithVariables.getElementsByClassName('commandCard');
-        
-        let variableList: Request.Response.Variables[] = [];
     
+        const variableList: Request.Response.VariableList[] = [];
+
         for (const card of variableCards) {
-            const commandDetails = card.getElementsByClassName('commandDetails');
-            const commandControls = card.getElementsByClassName('commandControls');
+            const variableDetails = card.getElementsByClassName('commandDetails');
+            const variableControls = card.getElementsByClassName('commandControls');
     
-            const variableName = commandDetails[0].children[0].textContent ?? '';
-            const variableValue = commandDetails[0].children[1].textContent ? (commandDetails[0].children[1].textContent.split('=').pop() ?? '') : '';
-            const variableID = (commandControls[0].children[0] as HTMLAnchorElement).href.split('/').pop() ?? '';
+            const id = (variableControls[0].children[0] as HTMLAnchorElement).href
+                .split('/')
+                .pop()!;
+            const name = variableDetails[0].children[0].textContent!;
+            const value = variableDetails[0].children[1].textContent!;
     
-            variableList.push({ variableID, variableName, variableValue });
+            variableList.push({ id, name, value });
         }
     
         return variableList;
-    }
-
-    /**
-     * 
-     * @param baseData An object containing data for authorization
-     * @param variableData An object containing old variable's data (with the exception of the `variableID` property)
-     * @param variableID A BDFD Variable ID
-     * @returns An object containing previous variable's data
-     */
-    static async update(baseData: Request.Data.Base, variableData: Partial<Omit<Request.Data.Variable.Data, 'variableID'>>, variableID: string): Promise<Request.Response.Variable> {
-        const previous = await this.get({
-            authToken: baseData.authToken,
-            botID: baseData.botID
-        }, variableID).catch((e: Request.Error) => e);
-
-        if (( <Request.Error> previous ).status) throw previous;
-    
-        const req = await request(RequestUpdate.Variable, {
-            authToken: baseData.authToken,
-            botID: baseData.botID,
-            variableData: {
-                variableID,
-                variableName: variableData.variableName ?? ( <Request.Response.Variable> previous ).variableName,
-                variableValue: variableData.variableValue ?? ( <Request.Response.Variable> previous ).variableValue
-            }
-        });
-    
-        if (req.error) throw req.error;
-    
-        return <Request.Response.Variable> previous;
     }
 }

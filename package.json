@@ -1,6 +1,6 @@
 {
     "name": "@synthexia/bdfd-external",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "description": "A package that allows you to work with BDFD externally",
     "author": "Kitomanari",
     "license": "MIT",
@@ -9,7 +9,7 @@
         "url": "https://github.com/Synthexia/bdfd-external"
     },
     "main": "dist/index.js",
-    "types": "types/types.d.ts",
+    "types": "types/index.d.ts",
     "scripts": {
         "build": "tsc -p . && pnpm pack"
     },
@@ -21,10 +21,10 @@
     ],
     "dependencies": {
         "centra": "2.6.0",
-        "jsdom": "21.1.1"
+        "jsdom": "22.1.0"
     },
     "devDependencies": {
-        "@types/jsdom": "21.1.1",
-        "@types/centra": "2.2.0"
+        "@types/centra": "2.2.0",
+        "@types/jsdom": "21.1.2"
     }
 }

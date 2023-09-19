@@ -3,7 +3,7 @@
         "module": "CommonJS",
         "lib": ["DOM"],
         "moduleResolution": "node",
-        "target": "ESNext",
+        "target": "ES2022",
         "strict": true,
         "outDir": "dist",
         "rootDir": "src"   
