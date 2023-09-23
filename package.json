@@ -1,6 +1,6 @@
 {
     "name": "@synthexia/bdfd-external",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "description": "A package that allows you to work with BDFD externally",
     "author": "Kitomanari",
     "license": "MIT",

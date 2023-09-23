@@ -259,6 +259,21 @@ export class User {
 
 export class Bot {
     /**
+     * 
+     * Get bot from the bot list by a specified id
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     */
+    public static async get(authToken: string, botId: string): Promise<Request.Response.BotList | undefined> {
+        const botList = await Bot.list(authToken);
+        
+        const bot = botList.find((bot) => bot.id == botId);
+
+        return bot;
+    }
+
+    /**
      * Get bot list
      * 
      * @param authToken An auth token

@@ -96,6 +96,15 @@ export class User {
 
 export class Bot {
     /**
+     * 
+     * Get bot from the bot list by a specified id
+     * 
+     * @param authToken An auth token
+     * @param botId A bot id
+     */
+    public static get(authToken: string, botId: string): Promise<Request.Response.BotList | undefined>;
+    
+    /**
      * Get bot list
      * 
      * @param authToken An auth token
