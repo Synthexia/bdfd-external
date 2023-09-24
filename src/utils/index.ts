@@ -1,10 +1,6 @@
-import {
-    type Data,
-    LanguageId,
-    LanguageName,
-    Request,
-} from "../../types";
+import type { Data } from "..";
 import { APP } from "../consts";
+import { RequestStatus, LanguageName, LanguageId } from "../enums";
 
 export const enum Path {
     Home = 'home',
@@ -39,14 +35,14 @@ export function generatePath(options: PathOptions): string {
 }
 
 export const enum ErrorType {
-    General = 'General',
-    AuthToken = 'AuthToken',
-    Limit = 'Limit',
-    Missing = 'Missing',
-    Unknown = 'Unknown'
+    General = 'general',
+    AuthToken = 'authToken',
+    Limit = 'limit',
+    Missing = 'missing',
+    Unknown = 'unknown'
 }
 
-export function getErrorData(type: ErrorType, status: Request.Status): Data.Error {
+export function getErrorData(type: ErrorType, status: RequestStatus): Data.Error {
     const data = <Data.Error> { status };
 
     switch (type) {
@@ -72,19 +68,19 @@ export function getErrorData(type: ErrorType, status: Request.Status): Data.Erro
     return data;
 }
 
-export function checkForError(status: Request.Status): false | Data.Error {
+export function checkForError(status: RequestStatus): false | Data.Error {
     switch (status) {
-        case Request.Status.Success:
+        case RequestStatus.Success:
             return false;
-        case Request.Status.SeeOther:
+        case RequestStatus.SeeOther:
             return false;
-        case Request.Status.Found:
+        case RequestStatus.Found:
             return getErrorData(ErrorType.AuthToken, status);
-        case Request.Status.BadRequest:
+        case RequestStatus.BadRequest:
             return getErrorData(ErrorType.Missing, status);
-        case Request.Status.Forbidden:
+        case RequestStatus.Forbidden:
             return getErrorData(ErrorType.Limit, status);
-        case Request.Status.NotFound:
+        case RequestStatus.NotFound:
             return getErrorData(ErrorType.General, status);
         default:
             return getErrorData(ErrorType.Unknown, status);

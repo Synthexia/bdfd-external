@@ -2,13 +2,6 @@ import * as centra from "centra";
 import { JSDOM } from "jsdom";
 
 import {
-    Data,
-    Request,
-    LanguageId,
-    LanguageName,
-} from "../types";
-
-import {
     DEFAULT_SESSION_STORE,
     FORM,
     MAX_REQUEST_ATTEMPTS,
@@ -27,49 +20,86 @@ import {
     getLanguageIdByName
 } from "./utils";
 
-const enum Create {
-    Command = 'createCommand',
-    Variable = 'createVariable'
+import {
+    RequestStatus,
+    LanguageName,
+    LanguageId,
+    Get,
+    Create,
+    Delete,
+    Update,
+    Method,
+    CommandDivElement,
+    CommandVariableListDivElement,
+    VariableDivElement
+} from "./enums";
+
+export declare namespace Request {
+    namespace Response {
+        interface Base {
+            error: boolean | Data.Error;
+            message: string;
+        }
+
+        interface Command extends Omit<Data.Command.Base, 'id'> {}
+        interface CommandList extends Omit<Data.Command.Base, 'code' | 'language'> {}
+        interface Variable extends Omit<Data.Variable.Base, 'id'> {}
+        interface VariableList extends Data.Variable.Base {}
+        interface BotList extends Data.Bot.Base {}
+    }
 }
 
-const enum Delete {
-    Command = 'deleteCommand',
-    Variable = 'deleteVariable'
-}
+export declare namespace Data {
+    interface Error {
+        status: RequestStatus;
+        message: string;
+        stack: string;
+    }
 
-const enum Get {
-    User = 'getUser',
-    Command = 'getCommand',
-    Variable = 'getVariable',
-    BotList = 'getBotList',
-    CommandVariableList = 'getCommandVariableList'
-}
+    namespace Command {
+        interface Base {
+            id: string;
+            name: string;
+            trigger: string;
+            code: string;
+            language: Language;
+        }
 
-const enum Update {
-    Command = 'updateCommand',
-    Variable = 'updateVariable'
-}
+        interface Partial {
+            name: string,
+            trigger: string,
+            code: string,
+            languageName: LanguageName
+        }
 
-const enum Method {
-    Post = 'POST',
-    Delete = 'DELETE'
-}
+        interface Language {
+            id: LanguageId;
+            name: LanguageName;
+        }
+    }
 
-const enum CommandDivElement {
-    Name,
-    Trigger,
-    Code,
-    Language
-}
+    namespace Variable {
+        interface Base {
+            id: string;
+            name: string;
+            value: string;
+        }
 
-const enum VariableDivElement {
-    Name,
-    Value
-}
+        interface Partial {
+            name: string;
+            value: string;
+        }
+    }
 
-const enum CommandVariableListDivElement {
-    Command = 1,
-    Variable
+    namespace Bot {
+        interface Base {
+            id: string;
+            name: string;
+            hosting: string;
+            commandCount: string;
+            variableCount: string;
+        }
+    }
 }
 
 type RequestOptions =
@@ -214,7 +244,7 @@ async function makeRequest(options: RequestOptions, authToken: string) {
                     if (attempt == MAX_REQUEST_ATTEMPTS) {
                         console.error(REQUEST_FAILED.NO_RETRY, error);
 
-                        reject(getErrorData(ErrorType.Unknown, Request.Status.Unknown));
+                        reject(getErrorData(ErrorType.Unknown, RequestStatus.Unknown));
                     } else {
                         console.info(REQUEST_FAILED.RETRY(attempt));
 
@@ -230,7 +260,7 @@ async function makeRequest(options: RequestOptions, authToken: string) {
     });
 
     const response = await centraResponse.text();
-    const status = <Request.Status> centraResponse.statusCode;
+    const status = <RequestStatus> centraResponse.statusCode;
 
     return {
         error: checkForError(status),
@@ -242,7 +272,8 @@ export class User {
     /**
      * Get an authorized user's username 
      * 
-     * @param authToken An auth token
+     * @param {string} authToken An auth token
+     * @returns {Promise<string>}
      */
     public static async get(authToken: string): Promise<string> {
         const document = await makeRequest({ type: Get.User }, authToken);
@@ -262,8 +293,9 @@ export class Bot {
      * 
      * Get bot from the bot list by a specified id
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @returns {Promise<import('.').Request.Response.BotList | undefined>}
      */
     public static async get(authToken: string, botId: string): Promise<Request.Response.BotList | undefined> {
         const botList = await Bot.list(authToken);
@@ -276,7 +308,8 @@ export class Bot {
     /**
      * Get bot list
      * 
-     * @param authToken An auth token
+     * @param {string} authToken An auth token
+     * @returns {Promise<import('.').Request.Response.BotList[]>}
      */
     public static async list(authToken: string): Promise<Request.Response.BotList[]> {
         const document = await makeRequest({ type: Get.BotList }, authToken);
@@ -340,9 +373,10 @@ export class Command {
      * 
      * Get command data
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param commandId A command id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} commandId A command id
+     * @returns {Promise<import('.').Request.Response.Command>}
      */
     public static async get(authToken: string, botId: string, commandId: string): Promise<Request.Response.Command> {
         const document = await makeRequest({
@@ -391,9 +425,10 @@ export class Command {
      * 
      * Create a new command
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param data The data with which the command will be created
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {Partial<import('.').Data.Command.Partial>} data The data with which the command will be created
+     * @returns {Promise<import('.').Data.Command.Base>}
      */
     public static async create(authToken: string, botId: string, data: Partial<Data.Command.Partial>): Promise<Data.Command.Base> {
         const document = await makeRequest({
@@ -433,10 +468,11 @@ export class Command {
      * 
      * Update a command
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param commandId A command id
-     * @param data The data which should be updated
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} commandId A command id
+     * @param {Partial<import('.').Data.Command.Partial>} data The data which should be updated
+     * @returns {Promise<import('.').Request.Response.Command>}
      */
     public static async update(authToken: string, botId: string, commandId: string, data: Partial<Data.Command.Partial>): Promise<Request.Response.Command> {
         const oldCommandData = await this.get(authToken, botId, commandId)
@@ -465,9 +501,10 @@ export class Command {
      * 
      * Delete a command
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param commandId A command id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} commandId A command id
+     * @returns {Promise<import('.').Request.Response.Command>}
      */
     public static async delete(authToken: string, botId: string, commandId: string): Promise<Request.Response.Command> {
         const oldCommandData = await this.get(authToken, botId, commandId)
@@ -490,8 +527,9 @@ export class Command {
      * 
      * Get command list
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @returns {Promise<import('.').Request.Response.CommandList[]>}
      */
     public static async list(authToken: string, botId: string): Promise<Request.Response.CommandList[]> {
         const document = await makeRequest({
@@ -538,9 +576,10 @@ export class Variable {
      * 
      * Get variable data
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param variableId A variable id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} variableId A variable id
+     * @returns {Promise<import('.').Request.Response.Variable>}
      */
     public static async get(authToken: string, botId: string, variableId: string): Promise<Request.Response.Variable> {
         const document = await makeRequest({
@@ -574,11 +613,12 @@ export class Variable {
      * 
      * Create a new variable
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param data The data with which the variable will be created
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {Partial<import('.').Data.Variable.Partial>} data The data with which the variable will be created
+     * @returns {Promise<import('.').Data.Variable.Base>}
      */
-    public static async create(authToken: string, botId: string, data: Partial<Omit<Data.Variable.Base, 'id'>>): Promise<Data.Variable.Base> {
+    public static async create(authToken: string, botId: string, data: Partial<Data.Variable.Partial>): Promise<Data.Variable.Base> {
         const document = await makeRequest({
             type: Create.Variable,
             botId
@@ -608,12 +648,12 @@ export class Variable {
      * 
      * Update a variable
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param variableId A variable id
-     * @param data The data which should be updated
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} variableId A variable id
+     * @param {Partial<import('.').Data.Variable.Partial>} data The data which should be updated
      */
-    public static async update(authToken: string, botId: string, variableId: string, data: Partial<Request.Response.Variable>): Promise<Request.Response.Variable> {
+    public static async update(authToken: string, botId: string, variableId: string, data: Partial<Data.Variable.Partial>): Promise<Request.Response.Variable> {
         const oldVariableData = await this.get(authToken, botId, variableId)
             .catch((e: Data.Error) => {
                 throw e;
@@ -638,9 +678,10 @@ export class Variable {
      * 
      * Delete a variable
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
-     * @param variableId A variable id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @param {string} variableId A variable id
+     * @returns {Promise<import('.').Request.Response.Variable>}
      */
     public static async delete(authToken: string, botId: string, variableId: string): Promise<Request.Response.Variable> {
         const oldVariableData = await this.get(authToken, botId, variableId)
@@ -663,8 +704,9 @@ export class Variable {
      * 
      * Get variable list
      * 
-     * @param authToken An auth token
-     * @param botId A bot id
+     * @param {string} authToken An auth token
+     * @param {string} botId A bot id
+     * @returns {Promise<import('.').Request.Response.VariableList[]>}
      */
     public static async list(authToken: string, botId: string): Promise<Request.Response.VariableList[]> {
         const document = await makeRequest({

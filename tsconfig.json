@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
-        "module": "CommonJS",
-        "lib": ["DOM"],
-        "moduleResolution": "node",
-        "target": "ES2022",
         "strict": true,
+        "declaration": true,
+        "module": "CommonJS",
+        "target": "ES2022",
+        "lib": ["DOM"],
         "outDir": "dist",
         "rootDir": "src"   
     },
-    "exclude": ["ignore"]
+    "include": ["src"],
+    "exclude": ["dist", "ignore"]
 }
