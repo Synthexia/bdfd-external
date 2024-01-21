@@ -23,26 +23,26 @@ export enum RequestStatus {
 }
 
 export enum Create {
-    Command = 'createCommand',
-    Variable = 'createVariable'
+    Command = 'CreateCommand',
+    Variable = 'CreateVariable'
 }
 
 export enum Delete {
-    Command = 'deleteCommand',
-    Variable = 'deleteVariable'
+    Command = 'DeleteCommand',
+    Variable = 'DeleteVariable'
 }
 
 export enum Get {
-    User = 'getUser',
-    Command = 'getCommand',
-    Variable = 'getVariable',
-    BotList = 'getBotList',
-    CommandVariableList = 'getCommandVariableList'
+    User = 'GetUser',
+    Command = 'GetCommand',
+    Variable = 'GetVariable',
+    BotList = 'GetBotList',
+    CommandVariableList = 'GetCommandVariableList'
 }
 
 export enum Update {
-    Command = 'updateCommand',
-    Variable = 'updateVariable'
+    Command = 'UpdateCommand',
+    Variable = 'UpdateVariable'
 }
 
 export enum Method {
@@ -65,4 +65,21 @@ export enum VariableDivElement {
 export enum CommandVariableListDivElement {
     Command = 1,
     Variable
+}
+
+export enum Path {
+    Home = 'Home',
+    Bot = 'Bot',
+    Command = 'Command',
+    Variable = 'Variable',
+    NewCommand = 'NewCommand',
+    NewVariable = 'NewVariable'
+}
+
+export const enum ErrorType {
+    General = 'Neneral',
+    AuthToken = 'AuthToken',
+    Limit = 'Limit',
+    Missing = 'Missing',
+    Unknown = 'Unknown'
 }

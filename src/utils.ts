@@ -1,15 +1,6 @@
-import type { Data } from "..";
-import { APP } from "../consts";
-import { RequestStatus, LanguageName, LanguageId } from "../enums";
-
-export const enum Path {
-    Home = 'home',
-    Bot = 'bot',
-    Command = 'command',
-    Variable = 'variable',
-    NewCommand = 'newCommand',
-    NewVariable = 'newVariable'
-}
+import { BDFDExternalRequestError } from ".";
+import { APP, REQUEST_ERROR_MESSAGE } from "./consts";
+import { RequestStatus, LanguageName, LanguageId, Path, ErrorType } from "./enums";
 
 type PathOptions =
     | { type: Path.Home }
@@ -34,46 +25,36 @@ export function generatePath(options: PathOptions): string {
     }
 }
 
-export const enum ErrorType {
-    General = 'general',
-    AuthToken = 'authToken',
-    Limit = 'limit',
-    Missing = 'missing',
-    Unknown = 'unknown'
-}
-
-export function getErrorData(type: ErrorType, status: RequestStatus): Data.Error {
-    const data = <Data.Error> { status };
+export function getErrorData(type: ErrorType, status: RequestStatus): BDFDExternalRequestError {
+    let message: string;
 
     switch (type) {
         case ErrorType.General:
-            data.message = '[BDFD External - General] Invalid or Non-existent Bot ID / Command ID / Variable ID was passed.';
+            message = REQUEST_ERROR_MESSAGE.GENERAL;
             break;
         case ErrorType.AuthToken:
-            data.message = '[BDFD External - AuthToken] Invalid or Expired auth token was passed.';
+            message = REQUEST_ERROR_MESSAGE.AUTH_TOKEN;
             break;
         case ErrorType.Limit:
-            data.message = '[BDFD External - Limit] Reached command / variable count limit.';
+            message = REQUEST_ERROR_MESSAGE.COUNT_LIMIT;
             break;
         case ErrorType.Missing:
-            data.message = '[BDFD External - Missing] Command ID / Variable ID is missing.';
+            message = REQUEST_ERROR_MESSAGE.MISSING_ID;
             break;
         case ErrorType.Unknown:
-            data.message = '[BDFD External - Unknown] Unknown Error.';
+            message = REQUEST_ERROR_MESSAGE.UNKNOWN;
             break;
     }
 
-    data.stack = new Error(data.message).stack!;
-
-    return data;
+    return new BDFDExternalRequestError(status, message);
 }
 
-export function checkForError(status: RequestStatus): false | Data.Error {
+export function checkForError(status: RequestStatus): BDFDExternalRequestError | undefined {
     switch (status) {
         case RequestStatus.Success:
-            return false;
+            return;
         case RequestStatus.SeeOther:
-            return false;
+            return;
         case RequestStatus.Found:
             return getErrorData(ErrorType.AuthToken, status);
         case RequestStatus.BadRequest:
