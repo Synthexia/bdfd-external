@@ -1,4 +1,3 @@
-import { BDFDExternalRequestError } from ".";
 import { APP, REQUEST_ERROR_MESSAGE } from "./consts";
 import { RequestStatus, LanguageName, LanguageId, Path, ErrorType } from "./enums";
 
@@ -78,5 +77,15 @@ export function getLanguageIdByName(name: LanguageName): LanguageId {
             return LanguageId.BDSU;
         case LanguageName.BDS2:
             return LanguageId.BDS2;
+    }
+}
+
+export class BDFDExternalRequestError extends Error {
+    public statusCode: RequestStatus;
+
+    constructor(statusCode: RequestStatus, message: string) {
+        super(message);
+
+        this.statusCode = statusCode;
     }
 }

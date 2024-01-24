@@ -20,3 +20,7 @@ export const REQUEST_ERROR_MESSAGE = {
     MISSING_ID: '[BDFD External - Missing] Command ID / Variable ID is missing.',
     UNKNOWN: '[BDFD External - Unknown] Unknown Error.'
 } as const;
+
+export const PUBLIC_CONSTS = {
+    REQUEST_ERROR_MESSAGE
+} as const;

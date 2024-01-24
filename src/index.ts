@@ -5,7 +5,6 @@ import {
     DEFAULT_SESSION_STORE,
     FORM,
     MAX_REQUEST_ATTEMPTS,
-    REQUEST_ERROR_MESSAGE,
     REQUEST_FAILED,
     RE_REQUEST_INTERVAL,
     START_ATTEMPT,
@@ -13,6 +12,7 @@ import {
 } from "./consts";
 
 import {
+    type BDFDExternalRequestError,
     checkForError,
     generatePath,
     getErrorData,
@@ -34,6 +34,10 @@ import {
     Path,
     ErrorType
 } from "./enums";
+
+export { LanguageName, LanguageId } from "./enums";
+export { type BDFDExternalRequestError } from "./utils";
+export { PUBLIC_CONSTS } from "./consts";
 
 export declare namespace Data {
     namespace Command {
@@ -124,9 +128,20 @@ export declare namespace Data {
     }
 }
 
+/**
+ * Utility type. Omits the `id` property.
+ */
 type OmitId<T> = Omit<T, 'id'>;
+/**
+ * Utility type. Omits the `code` property.
+ */
 type OmitCode<T> = Omit<T, 'code'>;
+/**
+ * Utility type. Omits the `language` property.
+ */
 type OmitLanguage<T> = Omit<T, 'language'>;
+
+export type { OmitId, OmitCode, OmitLanguage };
 
 type RequestOptions =
     | { type: Get.User | Get.BotList }
@@ -135,18 +150,6 @@ type RequestOptions =
     | { type: Get.Variable | Delete.Variable, botId: string, variableId: string }
     | { type: Update.Command, botId: string, commandId: string, data: Data.Command.Partial }
     | { type: Update.Variable, botId: string, variableId: string, data: { name: string, value: string } };
-
-export class BDFDExternalRequestError extends Error {
-    public statusCode: RequestStatus;
-
-    constructor(statusCode: RequestStatus, message: string) {
-        super(message);
-
-        this.statusCode = statusCode;
-    }
-}
-
-export const RequestErrorMessage = REQUEST_ERROR_MESSAGE;
 
 async function makeRequest(options: RequestOptions, authToken: string): Promise<Data.Request.Response.Base> {
     if (
